@@ -60,6 +60,7 @@ func main() {
 Bisheriger Gesprächsverlauf:
 {{.history}}
 
+Wichtig geben Sie nur kurze Antworten auf die Fragen!
 Schüler: {{.text}}
 Lehrer:`,
 		[]string{"history", "text"},

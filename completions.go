@@ -34,7 +34,7 @@ func WithModel(model string) Option{
 func NewLLM(options ...Option)  (*openai.LLM, error) {
 	cc := ChatCompletion{
 		url: "https://api.groq.com/openai/v1",
-		model: "llama-3.1-8b-instant",
+		model: "openai/gpt-oss-120b",
 		token: os.Getenv("GROQ_API_KEY"),
 	}
 	for _, option := range options {
