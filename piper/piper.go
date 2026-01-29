@@ -330,12 +330,16 @@ func (p PiperVoice) Speak(text string) error {
 	}
 
 	// Wait for both commands to finish
-	piperErr := piperCmd.Wait()
+	go func(){
+		piperErr := piperCmd.Wait()
+
+		if piperErr != nil {
+			slog.Info("piper error", "error", piperErr)
+		}
+	}()
+
 	aplayErr := aplayCmd.Wait()
 
-	if piperErr != nil {
-		return fmt.Errorf("piper error: %w, stderr: %s", piperErr, piperStderr.String())
-	}
 	if aplayErr != nil {
 		return fmt.Errorf("aplay error: %w, stderr: %s", aplayErr, aplayStderr.String())
 	}
