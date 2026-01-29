@@ -39,11 +39,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	piperModel := os.Getenv("PIPER_MODEL")
-	if piperModel == "" {
-		piperModel = "en_US-lessac-medium" // default model
-	}
-
 	fmt.Println("Voice Assistant - Press Ctrl+C to stop recording")
 	fmt.Println("==============================================")
 
@@ -67,7 +62,8 @@ func main() {
 
 	transcription = "Wie gehts es dir? Sprichst du gut deutsch?"
 	completion, err := generateChatCompletion(transcription) 
-	fmt.Printf("\n[3/4] Generating response with chat completion... %v ", completion)
+
+	fmt.Printf("\n[3/4] Generating response with chat completion... %q ", completion)
 
 	if err != nil {
 		fmt.Printf("Error generating chat completion: %v\n", err)
@@ -76,9 +72,8 @@ func main() {
 	// Generate speech with Piper TTS
 	fmt.Println("\n[4/4] Generating speech with Piper TTS...")
 
-	piperModel = "/usr/share/piper-voices/de_DE-karlsson-low.onnx"
 
-	piperVoice := piper.NewPiperVoice(piper.WithModel(piperModel))
+	piperVoice := piper.NewPiperVoice()
 	err = piperVoice.Speak(completion)
 	if err != nil {
 		fmt.Printf("Error generating speech: %v\n", err)
