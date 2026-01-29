@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"lelang/piper"
 	"mime/multipart"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -33,9 +33,6 @@ type GroqTranscriptionResponse struct {
 }
 
 func main() {
-
-
-
 	apiKey := os.Getenv("GROQ_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: GROQ_API_KEY environment variable not set")
@@ -76,20 +73,18 @@ func main() {
 		fmt.Printf("Error generating chat completion: %v\n", err)
 		os.Exit(1)
 	}
-
 	// Generate speech with Piper TTS
 	fmt.Println("\n[4/4] Generating speech with Piper TTS...")
 
 	piperModel = "/usr/share/piper-voices/de_DE-karlsson-low.onnx"
-	// err = speakWithPiper(completion, piperModel)
-	err = nil
+
+	piperVoice := piper.NewPiperVoice(piper.WithModel(piperModel))
+	err = piperVoice.Speak(completion)
 	if err != nil {
 		fmt.Printf("Error generating speech: %v\n", err)
 		os.Exit(1)
 	}
-
 	fmt.Println("\nDone!")
-
 }
 
 // recordAudio captures audio from the microphone until Ctrl+C is pressed
@@ -259,50 +254,3 @@ func transcribeWithGroq(audioData []byte, apiKey string) (string, error) {
 	return transcriptionResp.Text, nil
 }
 
-// speakWithPiper generates speech using Piper TTS and plays it
-func speakWithPiper(text, model string) error {
-	// Create piper command
-	// Piper reads from stdin and outputs WAV to stdout
-	piperCmd := exec.Command("piper-tts", "--model", model, "--output_file", "-")
-	piperCmd.Stdin = bytes.NewBufferString(text)
-
-	// Pipe piper output to aplay (or use paplay for PulseAudio)
-	aplayCmd := exec.Command("aplay", "-r", "22050", "-f", "S16_LE", "-t", "wav", "-")
-
-	// Connect piper stdout to aplay stdin
-	pipe, err := piperCmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create pipe: %w", err)
-	}
-	aplayCmd.Stdin = pipe
-
-	// Capture stderr for debugging
-	var piperStderr, aplayStderr bytes.Buffer
-	piperCmd.Stderr = &piperStderr
-	aplayCmd.Stderr = &aplayStderr
-
-	// Start both commands
-	err = piperCmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start piper: %w", err)
-	}
-
-	err = aplayCmd.Start()
-	if err != nil {
-		piperCmd.Process.Kill()
-		return fmt.Errorf("failed to start aplay: %w", err)
-	}
-
-	// Wait for both commands to finish
-	piperErr := piperCmd.Wait()
-	aplayErr := aplayCmd.Wait()
-
-	if piperErr != nil {
-		return fmt.Errorf("piper error: %w, stderr: %s", piperErr, piperStderr.String())
-	}
-	if aplayErr != nil {
-		return fmt.Errorf("aplay error: %w, stderr: %s", aplayErr, aplayStderr.String())
-	}
-
-	return nil
-}
