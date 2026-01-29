@@ -11,8 +11,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/gordonklaus/portaudio"
 	"github.com/tmc/langchaingo/chains"
@@ -46,7 +44,7 @@ func main() {
 
 	fmt.Println("Voice Assistant")
 	fmt.Println("===============")
-	fmt.Println("Press Ctrl+B to start recording, Ctrl+C to quit")
+	fmt.Println("Press Ctrl+B to start recording, Ctrl+B to stop")
 
 	llm, err := NewLLM()
 	if err != nil {
@@ -80,7 +78,7 @@ Lehrer:`,
 		}
 
 		// Record audio
-		fmt.Println("\n[1/4] Recording audio... (Press Ctrl+C to stop)")
+		fmt.Println("\n[1/4] Recording audio... (Press Ctrl+B to stop)")
 		audioData, err := recordAudio()
 		if err != nil {
 			fmt.Printf("Error recording audio: %v\n", err)
@@ -171,13 +169,12 @@ func recordAudio() ([]byte, error) {
 	}
 
 	// Handle Ctrl+C to stop recording
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
 	done := make(chan bool)
 
 	go func() {
-		<-sigChan
+		if err := waitForCtrlB(); err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
 		fmt.Println("\nStopping recording...")
 		done <- true
 	}()
