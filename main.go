@@ -8,14 +8,20 @@ import (
 	"fmt"
 	"io"
 	"lelang/piper"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gordonklaus/portaudio"
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/memory"
 	"github.com/tmc/langchaingo/prompts"
+
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
 )
 
@@ -35,7 +41,127 @@ type GroqTranscriptionResponse struct {
 	Text string `json:"text"`
 }
 
+type model struct {
+	llmChain *chains.LLMChain
+	viewport viewport.Model
+	content  string
+	ready    bool
+}
+
+func initialModel() model {
+	llm, err := NewLLM()
+	if err != nil {
+		fmt.Printf("Error creating LLM: %v\n", err)
+		os.Exit(1)
+	}
+
+	prompt := prompts.NewPromptTemplate(
+		`Du bist ein deutscher Lehrer. Antworte auf die folgende Frage oder Aussage auf Deutsch.
+
+Bisheriger Gesprächsverlauf:
+{{.history}}
+
+Wichtig geben Sie nur kurze Antworten auf die Fragen!
+Schüler: {{.text}}
+Lehrer:`,
+		[]string{"history", "text"},
+	)
+
+	llmChain := chains.NewLLMChain(llm, prompt)
+	llmChain.Memory = memory.NewConversationBuffer()
+
+	var content strings.Builder
+	for range 1000 {
+		s := "alsd;fasfjqpowejr1384j195j0234jl"
+		ri := rand.Intn(len(s))
+		row := strings.Repeat(string(s[ri]), 100)
+
+		content.WriteString(row + "\n")
+	}
+
+	return model{
+		llmChain: llmChain,
+		content: content.String(),
+	}
+}
+
+func (m model) Init() tea.Cmd {
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch k := msg.String(); k {
+		case "ctrl+b":
+
+			return m, func() tea.Msg {
+				return ""
+			}
+		case "ctrl+c", "q", "esc":
+			return m, tea.Quit
+		}
+	case tea.WindowSizeMsg:
+		headerHeight := lipgloss.Height(m.headerView()) + 1
+
+		if !m.ready {
+			viewport := viewport.New(msg.Width, msg.Height-headerHeight)
+			viewport.YPosition = headerHeight
+			viewport.SetContent(m.content)
+			m.viewport = viewport
+			m.ready = true
+		} else {
+			m.viewport.Width = msg.Width
+			m.viewport.Height = msg.Height - headerHeight 
+		}
+	}
+
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
+}
+
+var titleStyle = func() lipgloss.Style {
+		b := lipgloss.RoundedBorder()
+		b.Right = "├"
+		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
+	}()
+
+func (m model) headerView() string {
+	title := titleStyle.Render("Mr. Pager")
+	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)))
+	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
+}
+
+func (m model) View() string {
+	return fmt.Sprintf("%s\n%s\n", m.headerView(), m.viewport.View())
+}
+
 func main() {
+
+	p := tea.NewProgram(
+		initialModel(),
+		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
+		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
+	)
+	f, err := tea.LogToFile("tea.log", "")
+	if err != nil{
+		fmt.Println("could not run program:", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
+
+	if _, err := p.Run(); err != nil {
+		fmt.Println("could not run program:", err)
+		os.Exit(1)
+	}
+}
+
+func loop() {
 	apiKey := os.Getenv("GROQ_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: GROQ_API_KEY environment variable not set")
@@ -103,7 +229,6 @@ Lehrer:`,
 			continue
 		}
 		completion := output["text"].(string)
-		fmt.Printf("Response: %s\n", completion)
 
 		// Generate speech with Piper TTS
 		fmt.Println("\n[4/4] Generating speech with Piper TTS...")
@@ -221,15 +346,15 @@ func samplesToWAV(samples []int16, sampleRate, channels int) []byte {
 
 	// fmt subchunk
 	buf.WriteString("fmt ")
-	binary.Write(&buf, binary.LittleEndian, int32(16))          // Subchunk1Size (16 for PCM)
-	binary.Write(&buf, binary.LittleEndian, int16(1))           // AudioFormat (1 for PCM)
-	binary.Write(&buf, binary.LittleEndian, int16(channels))    // NumChannels
-	binary.Write(&buf, binary.LittleEndian, int32(sampleRate))  // SampleRate
-	byteRate := sampleRate * channels * 2                       // ByteRate
+	binary.Write(&buf, binary.LittleEndian, int32(16))         // Subchunk1Size (16 for PCM)
+	binary.Write(&buf, binary.LittleEndian, int16(1))          // AudioFormat (1 for PCM)
+	binary.Write(&buf, binary.LittleEndian, int16(channels))   // NumChannels
+	binary.Write(&buf, binary.LittleEndian, int32(sampleRate)) // SampleRate
+	byteRate := sampleRate * channels * 2                      // ByteRate
 	binary.Write(&buf, binary.LittleEndian, int32(byteRate))
-	blockAlign := channels * 2                                  // BlockAlign
+	blockAlign := channels * 2 // BlockAlign
 	binary.Write(&buf, binary.LittleEndian, int16(blockAlign))
-	binary.Write(&buf, binary.LittleEndian, int16(16))          // BitsPerSample
+	binary.Write(&buf, binary.LittleEndian, int16(16)) // BitsPerSample
 
 	// data subchunk
 	buf.WriteString("data")
@@ -309,4 +434,3 @@ func transcribeWithGroq(audioData []byte, apiKey string) (string, error) {
 
 	return transcriptionResp.Text, nil
 }
-
