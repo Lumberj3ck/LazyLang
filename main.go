@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"lelang/piper"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -21,10 +22,9 @@ import (
 )
 
 const (
-	sampleRate      = 16000
-	channels        = 1
-	framesPerBuffer = 1024
-	groqAPIURL      = "https://api.groq.com/openai/v1/audio/transcriptions"
+	sampleRate = 16000
+	channels   = 1
+	groqAPIURL = "https://api.groq.com/openai/v1/audio/transcriptions"
 )
 
 // WAV header constants
@@ -42,9 +42,10 @@ type model struct {
 	content  string
 	ready    bool
 	recorder *Recorder
+	apiKey string
 }
 
-func initialModel() model {
+func initialModel(apiKey string) model {
 	llm, err := NewLLM()
 	if err != nil {
 		fmt.Printf("Error creating LLM: %v\n", err)
@@ -80,6 +81,7 @@ Lehrer:`,
 		llmChain: llmChain,
 		content: content.String(),
 		recorder: NewRecorder(),
+		apiKey: apiKey,
 	}
 }
 
@@ -92,9 +94,14 @@ func EmptyCmd() tea.Msg{
 }
 
 type RecordingStarted struct{}
+type TranscriptionReceived struct {
+	transcription string
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case TranscriptionReceived:
+		m.viewport.SetContent(msg.transcription)
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
 		case "ctrl+b":
@@ -102,11 +109,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, EmptyCmd
 			}
 			
-			if m.recorder.Recording() {
+			if m.recorder.IsRecording() {
 				m.recorder.Stop()
 				m.viewport.SetContent("Stopped recording")
 				return m, func() tea.Msg {
-					return ""
+					transcription, err := transcribeWithGroq(m.recorder.Content, m.apiKey)
+					log.Println(transcription)
+					if err != nil {
+						log.Printf("Error transcribing audio: %v\n", err)
+						return EmptyCmd
+					}
+					return  TranscriptionReceived{transcription: transcription}
 				}
 			}
 
@@ -161,9 +174,15 @@ func main() {
 	serverTui := flag.Bool("serve-tui", false, "Start a TUI")
 	flag.Parse()
 
+	apiKey := os.Getenv("GROQ_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: GROQ_API_KEY environment variable not set")
+		os.Exit(1)
+	}
+
 	if 	*serverTui {
 		p := tea.NewProgram(
-			initialModel(),
+			initialModel(apiKey),
 			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 			tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 		)
@@ -180,17 +199,11 @@ func main() {
 			os.Exit(1)
 		}
 	} else {
-		loop()
+		loop(apiKey)
 	}
 }
 
-func loop() {
-	apiKey := os.Getenv("GROQ_API_KEY")
-	if apiKey == "" {
-		fmt.Println("Error: GROQ_API_KEY environment variable not set")
-		os.Exit(1)
-	}
-
+func loop(apiKey string) {
 	fmt.Println("Voice Assistant")
 	fmt.Println("===============")
 	fmt.Println("Press Ctrl+B to start recording, Ctrl+B to stop")
@@ -230,14 +243,15 @@ Lehrer:`,
 		// Record audio
 		fmt.Println("\n[1/4] Recording audio... (Press Ctrl+B to stop)")
 		go recorder.Start()
-
-		fmt.Printf("Recorded %d bytes of audio\n", len(recorder.content))
+		fmt.Println("Waiting for Stop")
+		waitForCtrlB()
 
 		recorder.Stop()
+		fmt.Printf("Recorded %d bytes of audio\n", len(recorder.Content))
 
 		// Transcribe with Groq
 		fmt.Println("\n[2/4] Transcribing audio with Groq...")
-		transcription, err := transcribeWithGroq(recorder.content, apiKey)
+		transcription, err := transcribeWithGroq(recorder.Content, apiKey)
 		if err != nil {
 			fmt.Printf("Error transcribing audio: %v\n", err)
 			continue

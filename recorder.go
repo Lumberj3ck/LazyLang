@@ -9,86 +9,98 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/gordonklaus/portaudio"
+	"github.com/gen2brain/malgo"
 )
 
 
 type Recorder struct {
 	recording bool
-	content   []byte
+	Content   []byte
 	done      chan struct{}
-	Stopped  time.Time
+	finished  chan struct{}
+	Stopped   time.Time
+	mu        sync.Mutex
 }
 
 func NewRecorder() *Recorder {
 	return &Recorder{
 		recording: false,
 		done:      make(chan struct{}),
+		finished:  make(chan struct{}),
 	}
 }
 
-func (r *Recorder) Recording() bool {
+func (r *Recorder) IsRecording() bool {
 	return r.recording
 }
 
 // recordAudio captures audio from the microphone until Ctrl+B is pressed
 func (r *Recorder) Start() ([]byte, error) {
-
-	err := portaudio.Initialize()
-
+	ctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PortAudio: %w", err)
+		return nil, fmt.Errorf("failed to initialize audio context: %w", err)
+	}
+	defer func() {
+		_ = ctx.Uninit()
+		ctx.Free()
+	}()
+
+	deviceConfig := malgo.DefaultDeviceConfig(malgo.Capture)
+	deviceConfig.Capture.Format = malgo.FormatS16
+	deviceConfig.Capture.Channels = uint32(channels)
+	deviceConfig.SampleRate = uint32(sampleRate)
+
+	var capturedBytes []byte
+
+	onRecvFrames := func(pOutputSample, pInputSamples []byte, framecount uint32) {
+		r.mu.Lock()
+		capturedBytes = append(capturedBytes, pInputSamples...)
+		r.mu.Unlock()
 	}
 
-	defer portaudio.Terminate()
-
-	// Create buffer for audio samples
-	buffer := make([]int16, framesPerBuffer)
-	var allSamples []int16
-
-	// Open default input stream
-	stream, err := portaudio.OpenDefaultStream(channels, 0, float64(sampleRate), framesPerBuffer, buffer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open stream: %w", err)
+	callbacks := malgo.DeviceCallbacks{
+		Data: onRecvFrames,
 	}
-	defer stream.Close()
 
-	err = stream.Start()
+	device, err := malgo.InitDevice(ctx.Context, deviceConfig, callbacks)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start stream: %w", err)
+		return nil, fmt.Errorf("failed to initialize capture device: %w", err)
+	}
+
+	err = device.Start()
+	if err != nil {
+		device.Uninit()
+		return nil, fmt.Errorf("failed to start capture device: %w", err)
 	}
 
 	r.recording = true
-
 	log.Println("Recording")
-	// Record until signal received
-	recording:
-		for {
-			select {
-			case <-r.done:
-				break recording
-			default:
-				err := stream.Read()
-				if err != nil {
-					return nil, fmt.Errorf("failed to read from stream: %w", err)
-				}
-				// Copy buffer to avoid overwriting
-				samples := make([]int16, len(buffer))
-				copy(samples, buffer)
-				allSamples = append(allSamples, samples...)
-			}
-		}
 
-	err = stream.Stop()
-	if err != nil {
-		return nil, fmt.Errorf("failed to stop stream: %w", err)
+	// Wait until stopped
+	<-r.done
+
+	device.Stop()
+	device.Uninit()
+
+	// Convert raw PCM bytes to []int16
+	r.mu.Lock()
+	raw := capturedBytes
+	r.mu.Unlock()
+
+	allSamples := make([]int16, len(raw)/2)
+	for i := range allSamples {
+		allSamples[i] = int16(raw[2*i]) | int16(raw[2*i+1])<<8
 	}
 
 	// Convert to WAV format
 	wavData := samplesToWAV(allSamples, sampleRate, channels)
-	r.content = wavData
+	r.Content = wavData
+	r.recording = false
+	r.Stopped = time.Now()
+	close(r.finished)
 	return wavData, nil
 }
 
@@ -97,6 +109,10 @@ func (r *Recorder) Stop() {
 		return
 	}
 	r.done <- struct{}{}
+	<-r.finished
+	// Reset channels for next recording
+	r.done = make(chan struct{})
+	r.finished = make(chan struct{})
 }
 
 // samplesToWAV converts raw audio samples to WAV format
