@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"lelang/piper"
 	"log"
@@ -13,6 +12,8 @@ import (
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/memory"
 	"github.com/tmc/langchaingo/prompts"
+
+	"github.com/muesli/reflow/wordwrap"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -36,13 +37,14 @@ type GroqTranscriptionResponse struct {
 }
 
 type model struct {
-	llmChain *chains.LLMChain
-	viewport viewport.Model
-	content  string
-	ready    bool
-	recorder *Recorder
-	apiKey string
-	Status string
+	llmChain   *chains.LLMChain
+	viewport   viewport.Model
+	content    string
+	ready      bool
+	recorder   *Recorder
+	apiKey     string
+	Status     string
+	piperVoice *piper.PiperVoice
 }
 
 func initialModel(apiKey string) model {
@@ -66,12 +68,14 @@ Lehrer:`,
 
 	llmChain := chains.NewLLMChain(llm, prompt)
 	llmChain.Memory = memory.NewConversationBuffer()
+	piperVoice := piper.NewPiperVoice()
 
 	return model{
-		llmChain: llmChain,
-		recorder: NewRecorder(),
-		apiKey: apiKey,
-		Status: "Ready",
+		llmChain:   llmChain,
+		recorder:   NewRecorder(),
+		apiKey:     apiKey,
+		Status:     "Ready",
+		piperVoice: piperVoice,
 	}
 }
 
@@ -79,7 +83,7 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func EmptyCmd() tea.Msg{
+func EmptyCmd() tea.Msg {
 	return ""
 }
 
@@ -87,13 +91,55 @@ type RecordingStarted struct{}
 type TranscriptionReceived struct {
 	transcription string
 }
+type StatusChanged struct {
+	status string
+}
+type ReadyCompletion struct {
+	completion string
+}
+
+func GetLlmCompletion(text string, m model) tea.Cmd {
+	return func() tea.Msg {
+		output, err := chains.Call(context.Background(), m.llmChain, map[string]any{"text": text})
+		if err != nil {
+			return StatusChanged{status: "Failed get completion"}
+		}
+		if output["text"] == nil {
+			return StatusChanged{status: "No completion"}
+		}
+		return ReadyCompletion{completion: output["text"].(string)}
+	}
+}
+
+func Speak(text string, m model) tea.Cmd {
+	return func() tea.Msg {
+		err := m.piperVoice.Speak(text)
+		if err != nil {
+			return StatusChanged{status: "Failed to speak"}
+		}
+		return StatusChanged{status: "Ready"}
+	}
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case StatusChanged:
+		m.Status = msg.status
+	case ReadyCompletion:
+		wrappedCompletion := wordwrap.String(msg.completion, m.viewport.Width)
+		m.content = fmt.Sprintf("%s\nAI: %s \n", m.content, wrappedCompletion)
+		m.viewport.SetContent(m.content)
+		m.viewport.GotoBottom()
+		m.Status = "Speaking"
+
+		return m, Speak(msg.completion, m)
+
 	case TranscriptionReceived:
-		transcript := fmt.Sprintf("You: %s \n", msg.transcription)
-		m.content = m.content + "\n" + transcript
-		m.viewport.SetContent(m.content)	
+		wrappedTrascription := wordwrap.String(msg.transcription, m.viewport.Width)
+		m.content = fmt.Sprintf("%s\nYou:%s \n", m.content, wrappedTrascription)
+		m.viewport.SetContent(m.content)
+		m.viewport.GotoBottom()
+		return m, GetLlmCompletion(msg.transcription, m)
 
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
@@ -101,7 +147,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if time.Since(m.recorder.Stopped) < time.Second {
 				return m, EmptyCmd
 			}
-			
+
 			if m.recorder.IsRecording() {
 				m.recorder.Stop()
 				m.Status = "Ready"
@@ -112,7 +158,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						log.Printf("Error transcribing audio: %v\n", err)
 						return EmptyCmd
 					}
-					return  TranscriptionReceived{transcription: transcription}
+					return TranscriptionReceived{transcription: transcription}
 				}
 			}
 
@@ -135,7 +181,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ready = true
 		} else {
 			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - headerHeight 
+			m.viewport.Height = msg.Height - headerHeight
 		}
 	}
 
@@ -148,19 +194,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 var titleStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.BottomRight = "┴"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
-	}()
+	b := lipgloss.RoundedBorder()
+	b.BottomRight = "┴"
+	return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
+}()
 
 func (m model) headerView() string {
 	title := titleStyle.Render("LeLang")
 
 	blockLength := max(0, m.viewport.Width-lipgloss.Width(title))
 
-	line := strings.Repeat("─",  blockLength)
+	line := strings.Repeat("─", blockLength)
 
-	statusLength := max(0, blockLength - lipgloss.Width(m.Status))
+	statusLength := max(0, blockLength-lipgloss.Width(m.Status))
 	statusLine := strings.Repeat(" ", statusLength) + m.Status
 
 	s := lipgloss.JoinVertical(lipgloss.Center, statusLine, line)
@@ -173,110 +219,27 @@ func (m model) View() string {
 }
 
 func main() {
-	serverTui := flag.Bool("serve-tui", false, "Start a TUI")
-	flag.Parse()
-
 	apiKey := os.Getenv("GROQ_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: GROQ_API_KEY environment variable not set")
 		os.Exit(1)
 	}
 
-	if 	*serverTui {
-		p := tea.NewProgram(
-			initialModel(apiKey),
-			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
-			tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
-		)
-		f, err := tea.LogToFile("tea.log", "")
-		if err != nil{
-			fmt.Println("could not run program:", err)
-			os.Exit(1)
-		}
-		defer f.Close()
-
-
-		if _, err := p.Run(); err != nil {
-			fmt.Println("could not run program:", err)
-			os.Exit(1)
-		}
-	} else {
-		loop(apiKey)
-	}
-}
-
-func loop(apiKey string) {
-	fmt.Println("Voice Assistant")
-	fmt.Println("===============")
-	fmt.Println("Press Ctrl+B to start recording, Ctrl+B to stop")
-
-	llm, err := NewLLM()
+	p := tea.NewProgram(
+		initialModel(apiKey),
+		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
+		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
+	)
+	f, err := tea.LogToFile("tea.log", "")
 	if err != nil {
-		fmt.Printf("Error creating LLM: %v\n", err)
+		fmt.Println("could not run program:", err)
 		os.Exit(1)
 	}
+	defer f.Close()
 
-	prompt := prompts.NewPromptTemplate(
-		`Du bist ein deutscher Lehrer. Antworte auf die folgende Frage oder Aussage auf Deutsch.
-
-Bisheriger Gesprächsverlauf:
-{{.history}}
-
-Wichtig geben Sie nur kurze Antworten auf die Fragen!
-Schüler: {{.text}}
-Lehrer:`,
-		[]string{"history", "text"},
-	)
-	llmChain := chains.NewLLMChain(llm, prompt)
-	llmChain.Memory = memory.NewConversationBuffer()
-	recorder := NewRecorder()
-
-	piperVoice := piper.NewPiperVoice()
-
-	// Main loop - wait for Ctrl+B
-	for {
-		fmt.Println("\n[Waiting] Press Ctrl+B to start recording...")
-
-		if err := waitForCtrlB(); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			continue
-		}
-
-		// Record audio
-		fmt.Println("\n[1/4] Recording audio... (Press Ctrl+B to stop)")
-		go recorder.Start()
-		fmt.Println("Waiting for Stop")
-		waitForCtrlB()
-
-		recorder.Stop()
-		fmt.Printf("Recorded %d bytes of audio\n", len(recorder.Content))
-
-		// Transcribe with Groq
-		fmt.Println("\n[2/4] Transcribing audio with Groq...")
-		transcription, err := transcribeWithGroq(recorder.Content, apiKey)
-		if err != nil {
-			fmt.Printf("Error transcribing audio: %v\n", err)
-			continue
-		}
-		fmt.Printf("Transcription: %s\n", transcription)
-
-		// Generate LLM response
-		fmt.Println("\n[3/4] Generating response...")
-		output, err := chains.Call(context.Background(), llmChain, map[string]any{"text": transcription})
-		if err != nil {
-			fmt.Printf("Error generating chat completion: %v\n", err)
-			continue
-		}
-		completion := output["text"].(string)
-
-		// Generate speech with Piper TTS
-		fmt.Println("\n[4/4] Generating speech with Piper TTS...")
-		err = piperVoice.Speak(completion)
-		if err != nil {
-			fmt.Printf("Error generating speech: %v\n", err)
-			continue
-		}
-		fmt.Println("\nDone!")
+	if _, err := p.Run(); err != nil {
+		fmt.Println("could not run program:", err)
+		os.Exit(1)
 	}
 }
 
@@ -307,4 +270,3 @@ func waitForCtrlB() error {
 		}
 	}
 }
-

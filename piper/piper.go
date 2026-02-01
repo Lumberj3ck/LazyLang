@@ -272,7 +272,7 @@ func WithModel(model string) PiperOption {
 	}
 }
 
-func NewPiperVoice(options ...PiperOption) PiperVoice {
+func NewPiperVoice(options ...PiperOption) *PiperVoice {
 	pv := PiperVoice{
 		Language: "de",
 		Model:    "de_DE-karlsson-low.onnx",
@@ -281,7 +281,7 @@ func NewPiperVoice(options ...PiperOption) PiperVoice {
 	for _, option := range options {
 		option(&pv)
 	}
-	return pv
+	return &pv
 }
 
 // speakWithPiper generates speech using Piper TTS and plays it
@@ -291,7 +291,6 @@ func (p PiperVoice) Speak(text string) error {
 
 	slog.Debug("Searching for", "modelFile", modelFile)
 	if err != nil {
-		fmt.Println("Model not found, downloading...")
 		err = DownloadVoice(p.Language, p.Model)
 		if err != nil {
 			return err
@@ -304,7 +303,6 @@ func (p PiperVoice) Speak(text string) error {
 
 	text = strings.ReplaceAll(text, "\n", " ")
 	text = norm.NFC.String(text)
-	fmt.Printf("text: %q\n", text)
 	piperCmd.Stdin = bytes.NewBufferString(text)
 
 	// Pipe piper output to aplay (or use paplay for PulseAudio)
