@@ -41,8 +41,9 @@ type model struct {
 	ready      bool
 	recorder   *Recorder
 	apiKey     string
-	Status     string
 	piperVoice *piper.PiperVoice
+	status     string
+	focusWord  int
 }
 
 func initialModel(apiKey string) model {
@@ -71,7 +72,7 @@ Lehrer:`,
 		llmChain:   llmChain,
 		recorder:   NewRecorder(),
 		apiKey:     apiKey,
-		Status:     "Ready",
+		status:     "Ready",
 		piperVoice: piperVoice,
 	}
 }
@@ -118,28 +119,63 @@ func Speak(text string, m model) tea.Cmd {
 	}
 }
 
+
+func HighlightFocusWord(m model) string {
+	var	st strings.Builder
+
+	log.Printf("Words %q, %q", strings.Split(strings.TrimSpace(m.content), " "), strings.TrimSpace(m.content))
+	for i, word := range strings.Split(strings.TrimSpace(m.content), " "){
+		if i == m.focusWord {
+			log.Printf("FocusWord: %q %v", word, i)
+			st.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render(word))
+		} else {
+			st.WriteString(word)
+		}
+		st.WriteRune(' ')
+	}
+	return st.String()
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case StatusChanged:
-		m.Status = msg.status
+		m.status = msg.status
 	case ReadyCompletion:
-		wrappedCompletion := lipgloss.NewStyle().Width(m.viewport.Width).Render(msg.completion)
-		m.content = fmt.Sprintf("%s\nAI: %s \n", m.content, wrappedCompletion)
-		m.viewport.SetContent(m.content)
+		m.content = fmt.Sprintf("%s\nAI: %s \n", m.content, msg.completion)
+		highlightedCompletion := HighlightFocusWord(m)
+
+		wrappedCompletion := lipgloss.NewStyle().Width(m.viewport.Width).Render(highlightedCompletion)
+		m.viewport.SetContent(wrappedCompletion)
 		m.viewport.GotoBottom()
-		m.Status = "Speaking"
+		m.status = "Speaking"
 
 		return m, Speak(msg.completion, m)
 
 	case TranscriptionReceived:
-		wrappedTrascription := lipgloss.NewStyle().Width(m.viewport.Width).Render(msg.transcription)
-		m.content = fmt.Sprintf("%s\nYou:%s \n", m.content, wrappedTrascription)
-		m.viewport.SetContent(m.content)
+		m.content = fmt.Sprintf("%s\nYou:%s \n", m.content, msg.transcription)
+
+		highlighted := HighlightFocusWord(m)
+		wrappedTrascription := lipgloss.NewStyle().Width(m.viewport.Width).Render(highlighted)
+		m.viewport.SetContent(wrappedTrascription)
 		m.viewport.GotoBottom()
 		return m, GetLlmCompletion(msg.transcription, m)
 
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
+		case "k":
+			if m.focusWord+1 >= len(strings.Split(strings.TrimSpace(m.content), " ")) {
+				break
+			}
+			m.focusWord++
+			highlightedCompletion := HighlightFocusWord(m)
+			m.viewport.SetContent(highlightedCompletion)
+		case "j":
+			if m.focusWord-1 < 0 {
+				break
+			}
+			m.focusWord--
+			highlightedCompletion := HighlightFocusWord(m)
+			m.viewport.SetContent(highlightedCompletion)
 		case "ctrl+b":
 			if time.Since(m.recorder.Stopped) < time.Second {
 				return m, EmptyCmd
@@ -147,7 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.recorder.IsRecording() {
 				m.recorder.Stop()
-				m.Status = "Ready"
+				m.status = "Ready"
 				return m, func() tea.Msg {
 					transcription, err := transcribeWithGroq(m.recorder.Content, m.apiKey)
 					log.Println(transcription)
@@ -159,7 +195,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.Status = "Recording"
+			m.status = "Recording"
 			return m, func() tea.Msg {
 				m.recorder.Start()
 				return ""
@@ -203,8 +239,8 @@ func (m model) headerView() string {
 
 	line := strings.Repeat("─", blockLength)
 
-	statusLength := max(0, blockLength-lipgloss.Width(m.Status))
-	statusLine := strings.Repeat(" ", statusLength) + m.Status
+	statusLength := max(0, blockLength-lipgloss.Width(m.status))
+	statusLine := strings.Repeat(" ", statusLength) + m.status
 
 	s := lipgloss.JoinVertical(lipgloss.Center, statusLine, line)
 
