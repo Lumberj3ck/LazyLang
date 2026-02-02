@@ -35,16 +35,17 @@ type GroqTranscriptionResponse struct {
 }
 
 type model struct {
-	llmChain   *chains.LLMChain
-	viewport   viewport.Model
-	content    string
-	ready      bool
-	recorder   *Recorder
-	apiKey     string
-	piperVoice *piper.PiperVoice
-	status     string
-	focusWord  int
-	focusRow   int
+	llmChain    *chains.LLMChain
+	viewport    viewport.Model
+	content     string
+	ready       bool
+	recorder    *Recorder
+	apiKey      string
+	piperVoice  *piper.PiperVoice
+	status      string
+	focusWord   int
+	focusRow    int
+	cancelSpeak context.CancelFunc
 }
 
 func initialModel(apiKey string) model {
@@ -117,11 +118,13 @@ type DownloadModel struct {
 	completion string
 }
 
-func Speak(text string, m model) tea.Cmd {
+func Speak(ctx context.Context, text string, m model) tea.Cmd {
 	return func() tea.Msg {
-		err := m.piperVoice.Speak(text)
+		err := m.piperVoice.Speak(ctx, text)
 		if err != nil {
 			switch err := err.(type) {
+			case piper.StoppedSpeaking:
+				return ""
 			case piper.ErrorModelNotFound:
 				return DownloadModel{model: err.Model, language: err.Language, completion: text}
 			default:
@@ -184,7 +187,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.status = "Speaking"
-		return m, Speak(msg.completion, m)
+		ctx, cancel := context.WithCancel(context.Background())
+		m.cancelSpeak = cancel
+		return m, Speak(ctx, msg.completion, m)
 
 	case TranscriptionReceived:
 		wrappedTrascription := lipgloss.NewStyle().Width(m.viewport.Width).Render(msg.transcription)
@@ -197,6 +202,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
+		case "esc":
+			if m.cancelSpeak != nil {
+				m.cancelSpeak()
+			}
+			m.status = "Ready"
 		case "j":
 			m.focusRow++
 
@@ -257,6 +267,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
 		case "ctrl+b":
+			if m.cancelSpeak != nil {
+				m.cancelSpeak()
+			}
+
 			if time.Since(m.recorder.Stopped) < time.Second {
 				return m, EmptyCmd
 			}
@@ -280,7 +294,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.recorder.Start()
 				return ""
 			}
-		case "ctrl+c", "q", "esc":
+		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:

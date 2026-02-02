@@ -2,6 +2,7 @@ package piper
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -292,8 +293,15 @@ func (e ErrorModelNotFound) Error() string {
 	return fmt.Sprintf("Model %s not found for language %s", e.Model, e.Language)
 }
 
+type StoppedSpeaking struct {
+}
+
+func (e StoppedSpeaking) Error() string {
+	return "Stopped speaking"
+}
+
 // speakWithPiper generates speech using Piper TTS and plays it
-func (p PiperVoice) Speak(text string) error {
+func (p PiperVoice) Speak(ctx context.Context, text string) error {
 	modelFile := filepath.Join(voicesDir, p.Model)
 	_, err := os.Stat(modelFile)
 
@@ -304,14 +312,14 @@ func (p PiperVoice) Speak(text string) error {
 
 	// Create piper command
 	// Piper reads from stdin and outputs WAV to stdout
-	piperCmd := exec.Command("piper-tts", "--model", modelFile, "--output_file", "-")
+	piperCmd := exec.CommandContext(ctx, "piper-tts", "--model", modelFile, "--output_file", "-")
 
 	text = strings.ReplaceAll(text, "\n", " ")
 	text = norm.NFC.String(text)
 	piperCmd.Stdin = bytes.NewBufferString(text)
 
 	// Pipe piper output to paplay
-	paplayCmd := exec.Command("paplay")
+	paplayCmd := exec.CommandContext(ctx, "paplay")
 
 	// Connect piper stdout to paplay stdin
 	pipe, err := piperCmd.StdoutPipe()
@@ -347,6 +355,10 @@ func (p PiperVoice) Speak(text string) error {
 	}()
 
 	aplayErr := paplayCmd.Wait()
+
+	if aplayErr != nil && aplayErr != context.Canceled {
+		return StoppedSpeaking{}
+	}
 
 	if aplayErr != nil {
 		return fmt.Errorf("paplay error: %w, stderr: %s", aplayErr, aplayStderr.String())
