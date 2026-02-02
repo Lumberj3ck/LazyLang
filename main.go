@@ -44,6 +44,7 @@ type model struct {
 	piperVoice *piper.PiperVoice
 	status     string
 	focusWord  int
+	focusRow   int
 }
 
 func initialModel(apiKey string) model {
@@ -119,20 +120,30 @@ func Speak(text string, m model) tea.Cmd {
 	}
 }
 
-
 func HighlightFocusWord(m model) string {
-	var	st strings.Builder
+	var st strings.Builder
 
-	log.Printf("Words %q, %q", strings.Split(strings.TrimSpace(m.content), " "), strings.TrimSpace(m.content))
-	for i, word := range strings.Split(strings.TrimSpace(m.content), " "){
-		if i == m.focusWord {
-			log.Printf("FocusWord: %q %v", word, i)
-			st.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render(word))
+	wrappedC := lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.TrimSpace(m.content))
+
+	log.Printf("Not wrappe:  %q, Wrapped split %q, %q", strings.Split(strings.TrimSpace(m.content), " "), strings.Split(strings.TrimSpace(m.content), " "), wrappedC)
+
+	for i, row := range strings.Split(strings.TrimSpace(m.content), "\n") {
+		if i == m.focusRow {
+			for i, word := range strings.Split(strings.TrimSpace(row), " ") {
+				if i == m.focusWord {
+					log.Printf("FocusWord: %q %v", word, i)
+					st.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render(word))
+				} else {
+					st.WriteString(word)
+				}
+				st.WriteRune(' ')
+			}
 		} else {
-			st.WriteString(word)
+			st.WriteString(row)
 		}
-		st.WriteRune(' ')
+		st.WriteRune('\n')
 	}
+
 	return st.String()
 }
 
@@ -141,38 +152,84 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StatusChanged:
 		m.status = msg.status
 	case ReadyCompletion:
-		m.content = fmt.Sprintf("%s\nAI: %s \n", m.content, msg.completion)
+
+		wrappedCompletion := lipgloss.NewStyle().Width(m.viewport.Width).Render(msg.completion)
+		m.content = fmt.Sprintf("%sAI: %s \n", m.content, wrappedCompletion)
 		highlightedCompletion := HighlightFocusWord(m)
 
-		wrappedCompletion := lipgloss.NewStyle().Width(m.viewport.Width).Render(highlightedCompletion)
-		m.viewport.SetContent(wrappedCompletion)
+		m.viewport.SetContent(highlightedCompletion)
 		m.viewport.GotoBottom()
 		m.status = "Speaking"
 
 		return m, Speak(msg.completion, m)
 
 	case TranscriptionReceived:
-		m.content = fmt.Sprintf("%s\nYou:%s \n", m.content, msg.transcription)
+		wrappedTrascription := lipgloss.NewStyle().Width(m.viewport.Width).Render(msg.transcription)
+		m.content = fmt.Sprintf("%sYou:%s \n", m.content, wrappedTrascription)
 
 		highlighted := HighlightFocusWord(m)
-		wrappedTrascription := lipgloss.NewStyle().Width(m.viewport.Width).Render(highlighted)
-		m.viewport.SetContent(wrappedTrascription)
+		m.viewport.SetContent(highlighted)
 		m.viewport.GotoBottom()
 		return m, GetLlmCompletion(msg.transcription, m)
 
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
-		case "k":
-			if m.focusWord+1 >= len(strings.Split(strings.TrimSpace(m.content), " ")) {
+		case "j":
+			m.focusRow++
+
+			rows := strings.Split(strings.TrimSpace(m.content), "\n")
+			if len(rows) == 0 {
 				break
 			}
+
+			focusedRow := rows[m.focusRow]
+			m.focusWord = min(len(strings.Split(focusedRow, " ")), m.focusWord)
+
+			highlightedCompletion := HighlightFocusWord(m)
+			m.viewport.SetContent(highlightedCompletion)
+		case "k":
+			m.focusRow--
+
+			rows := strings.Split(strings.TrimSpace(m.content), "\n")
+			if len(rows) == 0 {
+				break
+			}
+
+			focusedRow := rows[m.focusRow]
+			m.focusWord = min(len(strings.Split(focusedRow, " ")), m.focusWord)
+
+			highlightedCompletion := HighlightFocusWord(m)
+			m.viewport.SetContent(highlightedCompletion)
+		case "w":
+			rows := strings.Split(strings.TrimSpace(m.content), "\n")
+			if len(rows) == 0 {
+				break
+			}
+
+			focusedRow := rows[m.focusRow]
+			if m.focusWord+1 >= len(strings.Split(focusedRow, " ")) && m.focusRow+1 >= len(rows) {
+				break
+			}
+
+			if m.focusWord+1 >= len(strings.Split(focusedRow, " ")){
+				m.focusRow++
+				m.focusWord = -1
+			}
+
 			m.focusWord++
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
-		case "j":
-			if m.focusWord-1 < 0 {
+		case "b":
+			if m.focusWord-1 < 0 && m.focusRow-1 < 0 {
 				break
+			} else if m.focusWord-1 < 0 {
+				m.focusRow = max(0, m.focusRow-1)
+				rows := strings.Split(strings.TrimSpace(m.content), "\n")
+				focusedRow := strings.Split(strings.TrimSpace(rows[m.focusRow]), " ")
+				m.focusWord = len(focusedRow)
 			}
+			log.Printf("FocusWord B: %v %v", m.focusWord, m.focusRow)
+
 			m.focusWord--
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
@@ -212,6 +269,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			viewport.SetContent(m.content)
 			m.viewport = viewport
 			m.ready = true
+			return m, func() tea.Msg {
+				return ReadyCompletion{completion: "Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read Read  "}
+			}
 		} else {
 			m.viewport.Width = msg.Width
 			m.viewport.Height = msg.Height - headerHeight
