@@ -461,7 +461,11 @@ func main() {
 	}
 	defer f.Close()
 
-	if _, err := p.Run(); err != nil {
+	m, err := p.Run()
+	my := m.(model)
+	my.cancelSpeak()
+
+	if err != nil {
 		fmt.Println("could not run program:", err)
 		os.Exit(1)
 	}
