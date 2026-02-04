@@ -34,6 +34,10 @@ const (
 	wavHeaderSize = 44
 )
 
+const (
+	scrolloff = 2
+)
+
 type GroqTranscriptionResponse struct {
 	Text string `json:"text"`
 }
@@ -145,11 +149,6 @@ func Speak(ctx context.Context, text string, m model) tea.Cmd {
 
 func HighlightFocusWord(m model) string {
 	var st strings.Builder
-
-	wrappedC := lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.TrimSpace(m.content))
-
-	log.Printf("Not wrappe:  %q, Wrapped split %q, %q", strings.Split(strings.TrimSpace(m.content), " "), strings.Split(strings.TrimSpace(m.content), " "), wrappedC)
-
 	for i, row := range strings.Split(strings.TrimSpace(m.content), "\n") {
 		if i == m.focusRow {
 			for i, word := range strings.Split(strings.TrimSpace(row), " ") {
@@ -289,6 +288,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
+
+			// If we're not at scrolloff, don't scroll
+			visibleLines := m.viewport.VisibleLineCount()
+			if (visibleLines + m.viewport.YOffset) - m.focusRow > scrolloff{
+				return m, EmptyCmd
+			}
 		case "k":
 			if m.focusRow - 1 < 0 {
 				break
@@ -304,6 +309,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
+
+			// If we're not at scrolloff, don't scroll
+			if m.focusRow - (m.viewport.YOffset - 1) > scrolloff{
+				return m, EmptyCmd
+			}
 		case "w":
 			rows := strings.Split(strings.TrimSpace(m.content), "\n")
 			if len(rows) == 0 {
@@ -323,6 +333,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusWord++
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
+
+			// If we're not at scrolloff, don't scroll
+			visibleLines := m.viewport.VisibleLineCount()
+			if (visibleLines + m.viewport.YOffset) - m.focusRow > scrolloff{
+				return m, EmptyCmd
+			}
+			m.viewport.ScrollDown(1)
 		case "b":
 			if m.focusWord-1 < 0 && m.focusRow-1 < 0 {
 				break
@@ -337,6 +354,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusWord--
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
+
+			// If we're not at scrolloff, don't scroll
+			if m.focusRow - (m.viewport.YOffset - 1) > scrolloff{
+				return m, EmptyCmd
+			}
+			m.viewport.ScrollUp(1)
+			return m, EmptyCmd
 		case "ctrl+b":
 			if m.cancelSpeak != nil {
 				m.cancelSpeak()
