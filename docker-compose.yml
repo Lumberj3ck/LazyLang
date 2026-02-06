@@ -1,13 +1,17 @@
 services:
-  app:
+  lelang:
     build: .
+    image: lelang
+    container_name: lelang
+    env_file:
+      - .env
     environment:
-      - LIBRETRANSLATE_URL=http://libretranslate:5000
-    depends_on:
-      libretranslate:
-        condition: service_healthy
-    devices:
-      - /dev/snd:/dev/snd
+      - PULSE_SERVER=/run/user/1000/pulse/native
+    volumes:
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - ~/.config/pulse/cookie:/root/.config/pulse/cookie
+    group_add:
+      - audio  
 
   libretranslate:
     image: libretranslate/libretranslate:latest

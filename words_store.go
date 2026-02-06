@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-
 type WordsStore struct {
 	words map[string]string
 	order []string
@@ -27,9 +26,8 @@ func (ws *WordsStore) List() string {
 }
 
 func (ws *WordsStore) Add(word string, meaning string) {
-	if  _, ok := ws.words[word]; !ok{
+	if _, ok := ws.words[word]; !ok {
 		ws.order = append(ws.order, word)
 	}
 	ws.words[word] = meaning
 }
-

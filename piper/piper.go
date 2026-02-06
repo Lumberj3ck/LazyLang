@@ -1,6 +1,7 @@
 package piper
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -15,7 +16,10 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/gen2brain/malgo"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -310,79 +314,141 @@ func (p *PiperVoice) IsSpeaking() bool {
 }
 
 // speakWithPiper generates speech using Piper TTS and plays it
-func (p *PiperVoice) Speak(ctx context.Context, text string) error {
-	modelFile := filepath.Join(voicesDir, p.Model)
-	_, err := os.Stat(modelFile)
-
-	slog.Debug("Searching for", "modelFile", modelFile)
-	if err != nil {
-		return ErrorModelNotFound{Model: p.Model, Language: p.Language}
-	}
-
-	// Create piper command
-	// Piper reads from stdin and outputs WAV to stdout
-	piperCmd := exec.CommandContext(ctx, "piper-tts", "--model", modelFile, "--output_file", "-")
-
-	text = strings.ReplaceAll(text, "\n", " ")
-	text = norm.NFC.String(text)
-	piperCmd.Stdin = bytes.NewBufferString(text)
-
-	// Pipe piper output to paplay
-	paplayCmd := exec.CommandContext(ctx, "paplay")
-
-	// Connect piper stdout to paplay stdin
-	pipe, err := piperCmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create pipe: %w", err)
-	}
-	paplayCmd.Stdin = pipe
-
-	// Capture stderr for debugging
-	var piperStderr, aplayStderr bytes.Buffer
-	piperCmd.Stderr = &piperStderr
-	paplayCmd.Stderr = &aplayStderr
-
-	// Start both commands
-	err = piperCmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start piper: %w", err)
-	}
-
+func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 	p.mu.Lock()
 	p.speaking = true
 	p.mu.Unlock()
 
-	err = paplayCmd.Start()
-	if err != nil {
-		piperCmd.Process.Kill()
-		return fmt.Errorf("failed to start paplay: %w", err)
-	}
-
-	// Wait for both commands to finish
-	go func() {
-		piperErr := piperCmd.Wait()
-		p.mu.Lock()
-		p.speaking = false
-		p.mu.Unlock()
-
-		if piperErr != nil {
-			slog.Info("piper error", "error", piperErr)
-		}
-	}()
-
-	aplayErr := paplayCmd.Wait()
-
+	defer func() {
 	p.mu.Lock()
 	p.speaking = false
 	p.mu.Unlock()
+}()
+	err := func() error {
+		modelFile := filepath.Join(voicesDir, p.Model)
+		_, err := os.Stat(modelFile)
 
-	if aplayErr != nil && aplayErr != context.Canceled {
-		return StoppedSpeaking{}
-	}
+		slog.Debug("Searching for", "modelFile", modelFile)
+		if err != nil {
+			return ErrorModelNotFound{Model: p.Model, Language: p.Language}
+		}
 
-	if aplayErr != nil {
-		return fmt.Errorf("paplay error: %w, stderr: %s", aplayErr, aplayStderr.String())
-	}
+		// Create piper command
+		// Piper reads from stdin and outputs WAV to stdout
+		piperCmd := exec.CommandContext(piper_ctx, "piper-tts", "--model", modelFile, "--output_file", "-")
 
-	return nil
+		text = strings.ReplaceAll(text, "\n", " ")
+		text = norm.NFC.String(text)
+		piperCmd.Stdin = bytes.NewBufferString(text)
+
+		// Connect piper stdout to paplay stdin
+		pipe, err := piperCmd.StdoutPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create pipe: %w", err)
+		}
+
+		// Capture stderr for debugging
+		var piperStderr bytes.Buffer
+		piperCmd.Stderr = &piperStderr
+
+		ctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
+			// log.Printf("LOG <%v>\n", message)
+		})
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = ctx.Uninit()
+			ctx.Free()
+		}()
+
+		deviceConfig := malgo.DefaultDeviceConfig(malgo.Playback)
+		deviceConfig.Playback.Format = malgo.FormatS16
+		deviceConfig.Playback.Channels = 1
+		deviceConfig.SampleRate = 16000
+		deviceConfig.Alsa.NoMMap = 1
+
+		reader := bufio.NewReaderSize(pipe, 64*1024)
+		done := atomic.Bool{}
+		onSamples := func(pOutputSample, pInputSamples []byte, framecount uint32) {
+			select {
+			case <-piper_ctx.Done():
+				return
+			default:
+				if done.Load() {
+					// Fill with silence
+					for i := range pOutputSample {
+						pOutputSample[i] = 0
+					}
+					return
+				}
+				n, err := io.ReadFull(reader, pOutputSample)
+				if err == io.EOF || err == io.ErrUnexpectedEOF {
+					done.Store(true)
+					// Fill remaining with silence
+					for i := n; i < len(pOutputSample); i++ {
+						pOutputSample[i] = 0
+					}
+					return
+				}
+				if err != nil {
+					slog.Info("Read error", "error", err)
+					done.Store(true)
+					for i := range pOutputSample {
+						pOutputSample[i] = 0
+					}
+					return
+				}
+			}
+
+		}
+
+		deviceCallbacks := malgo.DeviceCallbacks{
+			Data: onSamples,
+		}
+
+		device, err := malgo.InitDevice(ctx.Context, deviceConfig, deviceCallbacks)
+		if err != nil {
+			return err
+		}
+		defer device.Uninit()
+
+		go func() {
+			err = device.Start()
+			if err != nil {
+				slog.Error("failed to start device:", "error", err)
+			}
+		}()
+		defer device.Stop()
+
+		// Start both commands
+		err = piperCmd.Start()
+		if err != nil {
+			return fmt.Errorf("failed to start piper: %w", err)
+		}
+
+		// Wait for both commands to finish
+		piperErr := piperCmd.Wait()
+		if piperErr != nil && piper_ctx.Err() != context.Canceled {
+			return piperErr
+		}
+
+		for !done.Load() {
+			select {
+			case <-piper_ctx.Done():
+				return nil
+			default:
+				time.Sleep(50 * time.Millisecond)
+			}
+		}
+
+		// Give a bit more time for the last buffer to play
+		time.Sleep(200 * time.Millisecond)
+
+
+		log.Printf("Speaking: %s", text)
+		return nil
+	}()
+
+	return err 
 }

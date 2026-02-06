@@ -173,8 +173,8 @@ func HighlightFocusWord(m model) string {
 }
 
 type TranslationReceived struct {
-	Word         string
-	Translation  string
+	Word        string
+	Translation string
 }
 
 func GetTranslation(word string, m model) tea.Cmd {
@@ -227,7 +227,7 @@ func GetTranslation(word string, m model) tea.Cmd {
 
 func (m *model) UpdateStatus(status string) {
 	if m.recorder.IsRecording() || m.piperVoice.IsSpeaking() {
-		return 
+		return
 	}
 	m.status = status
 }
@@ -300,18 +300,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusRow++
 
 			focusedRow := rows[m.focusRow]
-			m.focusWord = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " ")) - 1, 0), m.focusWord)
+			m.focusWord = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " "))-1, 0), m.focusWord)
 
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
 
 			// If we're not at scrolloff, don't scroll
 			visibleLines := m.viewport.VisibleLineCount()
-			if (visibleLines + m.viewport.YOffset) - m.focusRow > scrolloff{
+			if (visibleLines+m.viewport.YOffset)-m.focusRow > scrolloff {
 				return m, EmptyCmd
 			}
 		case "k":
-			if m.focusRow - 1 < 0 {
+			if m.focusRow-1 < 0 {
 				break
 			}
 			m.focusRow--
@@ -321,13 +321,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			focusedRow := rows[m.focusRow]
-			m.focusWord = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " ")) - 1, 0), m.focusWord)
+			m.focusWord = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " "))-1, 0), m.focusWord)
 
 			highlightedCompletion := HighlightFocusWord(m)
 			m.viewport.SetContent(highlightedCompletion)
 
 			// If we're not at scrolloff, don't scroll
-			if m.focusRow - (m.viewport.YOffset - 1) > scrolloff{
+			if m.focusRow-(m.viewport.YOffset-1) > scrolloff {
 				return m, EmptyCmd
 			}
 		case "w":
@@ -352,7 +352,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If we're not at scrolloff, don't scroll
 			visibleLines := m.viewport.VisibleLineCount()
-			if (visibleLines + m.viewport.YOffset) - m.focusRow > scrolloff{
+			if (visibleLines+m.viewport.YOffset)-m.focusRow > scrolloff {
 				return m, EmptyCmd
 			}
 			m.viewport.ScrollDown(1)
@@ -372,7 +372,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(highlightedCompletion)
 
 			// If we're not at scrolloff, don't scroll
-			if m.focusRow - (m.viewport.YOffset - 1) > scrolloff{
+			if m.focusRow-(m.viewport.YOffset-1) > scrolloff {
 				return m, EmptyCmd
 			}
 			m.viewport.ScrollUp(1)
@@ -438,6 +438,7 @@ var titleStyle = func() lipgloss.Style {
 	b.BottomRight = "┴"
 	return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
 }()
+
 func (m model) getFocusedWord() string {
 	rows := strings.Split(strings.TrimSpace(m.content), "\n")
 
@@ -460,7 +461,7 @@ func (m model) headerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, s)
 }
 
-func (m model) sidebarView() string { 
+func (m model) sidebarView() string {
 	b := lipgloss.NewStyle().
 		Height(m.viewport.Height).
 		Width(m.viewport.Width * 1 / 4).
