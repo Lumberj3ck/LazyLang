@@ -17,7 +17,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/gen2brain/malgo"
 	"golang.org/x/text/unicode/norm"
@@ -369,23 +368,30 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 		deviceConfig.Alsa.NoMMap = 1
 
 		reader := bufio.NewReaderSize(pipe, 64*1024)
-		done := atomic.Bool{}
+		eofReached := atomic.Bool{}
+		playbackDone := make(chan struct{})
+		silenceCallbacks := atomic.Int32{}
 		onSamples := func(pOutputSample, pInputSamples []byte, framecount uint32) {
 			select {
 			case <-piper_ctx.Done():
 				return
 			default:
-				if done.Load() {
-					// Fill with silence
+				if eofReached.Load() {
 					for i := range pOutputSample {
 						pOutputSample[i] = 0
+					}
+					// After a few silence callbacks, signal that playback is truly done
+					if silenceCallbacks.Add(1) >= 4 {
+						select {
+						case playbackDone <- struct{}{}:
+						default:
+						}
 					}
 					return
 				}
 				n, err := io.ReadFull(reader, pOutputSample)
 				if err == io.EOF || err == io.ErrUnexpectedEOF {
-					done.Store(true)
-					// Fill remaining with silence
+					eofReached.Store(true)
 					for i := n; i < len(pOutputSample); i++ {
 						pOutputSample[i] = 0
 					}
@@ -393,7 +399,7 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 				}
 				if err != nil {
 					slog.Info("Read error", "error", err)
-					done.Store(true)
+					eofReached.Store(true)
 					for i := range pOutputSample {
 						pOutputSample[i] = 0
 					}
@@ -433,17 +439,12 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 			return piperErr
 		}
 
-		for !done.Load() {
-			select {
-			case <-piper_ctx.Done():
-				return nil
-			default:
-				time.Sleep(50 * time.Millisecond)
-			}
+		// Wait for playback to actually finish (silence callbacks confirm device drained)
+		select {
+		case <-piper_ctx.Done():
+			return nil
+		case <-playbackDone:
 		}
-
-		// Give a bit more time for the last buffer to play
-		time.Sleep(200 * time.Millisecond)
 
 
 		log.Printf("Speaking: %s", text)
