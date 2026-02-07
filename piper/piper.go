@@ -334,7 +334,7 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 
 		// Create piper command
 		// Piper reads from stdin and outputs WAV to stdout
-		piperCmd := exec.CommandContext(piper_ctx, "piper-tts", "--model", modelFile, "--output_file", "-")
+		piperCmd := exec.CommandContext(piper_ctx, "piper-tts", "--model", modelFile, "--output_raw")
 
 		text = strings.ReplaceAll(text, "\n", " ")
 		text = norm.NFC.String(text)
@@ -427,7 +427,7 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 		}()
 		defer device.Stop()
 
-		// Start both commands
+		// Start piper
 		err = piperCmd.Start()
 		if err != nil {
 			return fmt.Errorf("failed to start piper: %w", err)
