@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"lazylang/transriber"
+
 	"github.com/gen2brain/malgo"
 )
 
@@ -45,8 +47,8 @@ func (r *Recorder) Start() ([]int16, error) {
 
 	deviceConfig := malgo.DefaultDeviceConfig(malgo.Capture)
 	deviceConfig.Capture.Format = malgo.FormatS16
-	deviceConfig.Capture.Channels = uint32(channels)
-	deviceConfig.SampleRate = uint32(sampleRate)
+	deviceConfig.Capture.Channels = uint32(transriber.Channels)
+	deviceConfig.SampleRate = uint32(transriber.SampleRate)
 
 	var capturedBytes []byte
 

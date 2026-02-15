@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"lazylang/piper"
+	"lazylang/utils"
 	"log"
 	"log/slog"
 	"net/http"
@@ -28,8 +29,16 @@ type Config struct {
 	STTBackend STTBackend `json:"stt_backend"`
 }
 
+type STTType string
+
+const (
+	HostedSTT STTType = "hosted"
+	LocalSTT  STTType = "local"
+)
+
 type STTBackend struct {
-	Type  string `json:"type"`
+	// hosted, local
+	Type  STTType `json:"type"`
 	Model string `json:"model"`
 }
 
@@ -76,20 +85,17 @@ func CreateDefaultConfig() (Config, error) {
 }
 
 func GetConfigPath() string {
-	d, err := os.UserHomeDir()
-
-	if err != nil {
-		d = "."
-	}
-	return filepath.Join(d, ".config", "lazylang", "config.json")
+	projectPath := utils.GetProjectPath()
+	return filepath.Join(projectPath, "config.json")
 }
 
 var invalidApiKey = errors.New("Invalid API key")
+var invalidSttBackend = errors.New("Invalid STT backend")
 
-func isValid(config Config, apiKey string) error {
-	model := config.STTBackend.Model
+func CheckHostedSTT(config Config, apiKey string) error {
 	client := &http.Client{}
 
+	model := config.STTBackend.Model
 	url := fmt.Sprintf("%v/models/%v", groqAPIBaseURL, model)
 	req, err := http.NewRequest("GET", url , nil)
 
@@ -115,6 +121,18 @@ func isValid(config Config, apiKey string) error {
 	default:
 		return errors.New("Invalid model")
 	}
+}
+
+func isValid(config Config, apiKey string) error {
+	switch config.STTBackend.Type {
+	case HostedSTT:
+		return CheckHostedSTT(config, apiKey)
+	case LocalSTT:
+		break
+	default:
+		return invalidSttBackend
+	}
+	return nil
 }
 
 func resolvePiperVoice(language string, defaultConfig Config) (string, string) {

@@ -13,8 +13,8 @@ import (
 // WAV header constants
 const (
 	wavHeaderSize = 44
-	sampleRate = 16000
-	channels   = 1
+	SampleRate = 16000
+	Channels   = 1
 )
 
 var groqAudioAPIURL = "https://api.groq.com/openai/v1/audio/transcriptions"
@@ -26,15 +26,20 @@ type GroqTranscriptionResponse struct {
 type GroqTranscriber struct {
 	apiKey string
 	language string
+	model string
 }
 
-func NewGroqTranscriber() *GroqTranscriber {
-	return &GroqTranscriber{}
+func NewGroqTranscriber(model string, apiKey string, language string) *GroqTranscriber {
+	return &GroqTranscriber{
+		apiKey: apiKey,
+		language: language,
+		model: model,
+	}
 }
 
 // transcribeWithGroq sends audio to Groq API for transcription
 func (m GroqTranscriber) Transcribe(audioData []int16) (string, error) {
-	audioWav := samplesToWAV(audioData, sampleRate, channels)
+	audioWav := samplesToWAV(audioData, SampleRate, Channels)
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 
@@ -49,7 +54,7 @@ func (m GroqTranscriber) Transcribe(audioData []int16) (string, error) {
 	}
 
 	// Add model field
-	err = writer.WriteField("model", "whisper-large-v3")
+	err = writer.WriteField("model", m.model)
 	if err != nil {
 		return "", fmt.Errorf("failed to write model field: %w", err)
 	}

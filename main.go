@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"lazylang/piper"
+	"lazylang/transriber"
 	"log"
 	"log/slog"
 	"net/http"
@@ -55,6 +56,7 @@ type model struct {
 	cancelSpeak context.CancelFunc
 	wordsStore  *WordsStore
 	config      Config
+	transcriber transriber.Transcriber
 }
 
 func initialModel(apiKey string, config Config) model {
@@ -81,6 +83,16 @@ func initialModel(apiKey string, config Config) model {
 	llmChain := chains.NewLLMChain(llm, prompt)
 	llmChain.Memory = memory.NewConversationBuffer()
 	piperVoice := piper.NewPiperVoice(piper.WithModel(config.TTSBackend.Voice), piper.WithLanguage(config.Language))
+
+	var transcriber transriber.Transcriber
+	switch config.STTBackend.Type {
+	case HostedSTT:
+		transcriber = transriber.NewGroqTranscriber(config.STTBackend.Model, apiKey, config.Language)
+	case LocalSTT:
+		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model)
+	default:
+		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
+	}
 	return model{
 		llmChain:   llmChain,
 		recorder:   NewRecorder(),
@@ -89,6 +101,7 @@ func initialModel(apiKey string, config Config) model {
 		piperVoice: piperVoice,
 		wordsStore: NewWordsStore(),
 		config:     config,
+		transcriber: transcriber,
 	}
 }
 
@@ -125,7 +138,7 @@ func GetLlmCompletion(text string, m model) tea.Cmd {
 	}
 }
 
-type DownloadModel struct {
+type DownloadPiperModel struct {
 	model      string
 	language   string
 	completion string
@@ -139,7 +152,7 @@ func Speak(ctx context.Context, text string, m model) tea.Cmd {
 			case piper.StoppedSpeaking:
 				return ""
 			case piper.ErrorModelNotFound:
-				return DownloadModel{model: err.Model, language: err.Language, completion: text}
+				return DownloadPiperModel{model: err.Model, language: err.Language, completion: text}
 			default:
 				log.Printf("Error speaking: %v\n", err)
 				return StatusChanged{status: "Failed to speak"}
@@ -219,7 +232,6 @@ func GetTranslation(word string, m model) tea.Cmd {
 			log.Printf("Error parsing translation response: %v", err)
 			return StatusChanged{status: "Failed to translate"}
 		}
-
 		return TranslationReceived{Word: word, Translation: result.TranslatedText}
 	}
 }
@@ -242,7 +254,7 @@ func getWrappedContent(content string, width int) string {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case DownloadModel:
+	case DownloadPiperModel:
 		m.UpdateStatus("Downloading tts model")
 		return m, func() tea.Msg {
 			err := piper.DownloadVoice(msg.language, msg.model)
@@ -251,7 +263,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return ReadyCompletion{completion: msg.completion, addContent: false}
 		}
-
+	// case DownloadWhispercppModel:
+	// 	m, ok := m.transcriber.(*WhispercppTranscriber)
 	case StatusChanged:
 		m.UpdateStatus(msg.status)
 	case ReadyCompletion:
@@ -402,8 +415,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.UpdateStatus("Ready")
 				return m, func() tea.Msg {
 					transcription, err := m.transcriber.Transcribe(m.recorder.Content)
-
-					transcription, err := transcribeWithGroq(m.recorder.Content, m.apiKey, m.config.Language)
 					log.Println(transcription)
 					if err != nil {
 						log.Printf("Error transcribing audio: %v\n", err)
@@ -507,6 +518,8 @@ func main() {
 		log.Fatalf("Error parsing config: %v", syntaxErr)
 	} else if errors.Is(err, invalidApiKey) {
 		log.Fatalf("Error: Invalid API key")
+	} else if errors.Is(err, invalidSttBackend) {
+		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
 	}
 
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"lazylang/utils"
 	"log"
 	"log/slog"
 	"net/http"
@@ -22,8 +23,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var home, _ = os.UserHomeDir()
-var voicesDir = filepath.Join(home, ".piper-voices")
+var voicesDir = filepath.Join(utils.GetProjectPath(), "piper-voices")
 
 const voicesURL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
 const baseDownloadURL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0"
