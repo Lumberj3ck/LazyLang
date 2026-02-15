@@ -31,18 +31,21 @@ func init() {
 var whisperModelsDir = filepath.Join(utils.GetProjectPath(), "whisper-models")
 type WhispercppTranscriber struct {
 	model string // Path to the model
+	language string
 }
 
-func NewWhispercppTranscriber(model string) *WhispercppTranscriber {
+func NewWhispercppTranscriber(model string, language string) *WhispercppTranscriber {
 	return &WhispercppTranscriber{
 		model: model,
+		language: language,
 	}
 }
 
 func int16ToFloat32(input []int16) []float32 {
     output := make([]float32, len(input))
     for i, v := range input {
-        output[i] = float32(v)
+		// normalise to [-1, 1] for whispercpp
+        output[i] = float32(v) / 32768.0
     }
     return output
 }
@@ -65,6 +68,8 @@ func (m WhispercppTranscriber) Transcribe(audioData []int16) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	context.SetLanguage(m.language)
+
 	if err := context.Process(samples, nil, nil, nil); err != nil {
 		return "", err
 	}

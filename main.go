@@ -88,7 +88,7 @@ func initialModel(apiKey string, config Config) model {
 	case HostedSTT:
 		transcriber = transriber.NewGroqTranscriber(config.STTBackend.Model, apiKey, config.Language)
 	case LocalSTT:
-		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model)
+		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model, config.Language)
 	default:
 		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
 	}
