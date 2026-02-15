@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/gen2brain/malgo v0.11.24
+	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-20260209103306-764482c3175d
 	github.com/tmc/langchaingo v0.1.14
 	golang.org/x/term v0.34.0
 	golang.org/x/text v0.28.0

@@ -27,17 +27,11 @@ import (
 )
 
 const (
-	sampleRate = 16000
-	channels   = 1
 	groqAPIBaseURL = "https://api.groq.com/openai/v1"
 )
 var groqAudioAPIURL = fmt.Sprintf("%v/audio/transcriptions", groqAPIBaseURL)
 
 
-// WAV header constants
-const (
-	wavHeaderSize = 44
-)
 
 const (
 	scrolloff = 2
@@ -45,9 +39,6 @@ const (
 
 var isAlpha = regexp.MustCompile(`[\p{L}]+`)
 
-type GroqTranscriptionResponse struct {
-	Text string `json:"text"`
-}
 
 type model struct {
 	llmChain    *chains.LLMChain
@@ -410,6 +401,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.recorder.Stop()
 				m.UpdateStatus("Ready")
 				return m, func() tea.Msg {
+					transcription, err := m.transcriber.Transcribe(m.recorder.Content)
+
 					transcription, err := transcribeWithGroq(m.recorder.Content, m.apiKey, m.config.Language)
 					log.Println(transcription)
 					if err != nil {
