@@ -7,7 +7,6 @@ import (
 	"io"
 	"lazylang/piper"
 	"lazylang/utils"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -112,14 +111,13 @@ func CheckHostedSTT(config Config, apiKey string) error {
 	}
 	defer resp.Body.Close()
 
-	log.Println(resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return nil
 	case http.StatusUnauthorized:
 		return invalidApiKey
 	default:
-		return errors.New("Invalid model")
+		return errors.New("Invalid model STT backend model") 
 	}
 }
 
@@ -170,7 +168,6 @@ func populateDefaults(config Config) Config {
 		config.TTSBackend.Voice = voice
 		config.Language = language
 	}
-
 	return config
 }
 

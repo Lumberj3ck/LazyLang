@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"lazylang/piper"
@@ -513,17 +512,8 @@ func main() {
 
 	config, err := GetConfig(apiKey)
 
-    var syntaxErr *json.SyntaxError
-	if errors.As(err, &syntaxErr) {
-		log.Fatalf("Error parsing config: %v", syntaxErr)
-	} else if errors.Is(err, invalidApiKey) {
-		log.Fatalf("Error: Invalid API key")
-	} else if errors.Is(err, invalidSttBackend) {
-		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
-	}
-
 	if err != nil {
-		slog.Error("Failed to get config", "error", err)
+		log.Fatalf("Error parsing config: %v", err)
 	}
 	slog.Info("Config", "config", config)
 
