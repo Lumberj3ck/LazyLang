@@ -121,11 +121,28 @@ func CheckHostedSTT(config Config, apiKey string) error {
 	}
 }
 
+func modelAvailable(url string) bool {
+	resp, err := http.Head(url)
+	if err != nil {
+			return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
 func isValid(config Config, apiKey string) error {
 	switch config.STTBackend.Type {
 	case HostedSTT:
 		return CheckHostedSTT(config, apiKey)
 	case LocalSTT:
+		model := config.STTBackend.Model
+		if filepath.Ext(model) != ".bin" {
+			model += ".bin"
+		}
+		url := fmt.Sprintf("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/%s", model)
+		if !modelAvailable(url) {
+			return fmt.Errorf("Model not found at %s", url)
+		}
 		break
 	default:
 		return invalidSttBackend

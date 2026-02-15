@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"lazylang/piper"
@@ -56,6 +57,7 @@ type model struct {
 	wordsStore  *WordsStore
 	config      Config
 	transcriber transriber.Transcriber
+	downloadingModel bool
 }
 
 func initialModel(apiKey string, config Config) model {
@@ -247,8 +249,29 @@ func setViewportContent(m *model, content string) {
 	m.viewport.SetContent(content)
 }
 
+type DownloadWhisperModel struct {
+	model string
+}
+
+type FinishDownloadingWhisperModel struct {err string}
+
 func getWrappedContent(content string, width int) string {
 	return lipgloss.NewStyle().Width(width).Render(content)
+}
+
+func GetTranscription(m model) tea.Cmd{
+	return func() tea.Msg {
+	transcription, err := m.transcriber.Transcribe(m.recorder.Content)
+	if errors.Is(err, transriber.ErrNoModel) {
+		return DownloadWhisperModel{model: m.config.STTBackend.Model}
+	}
+	log.Println(transcription)
+	if err != nil {
+		log.Printf("Error transcribing audio: %v\n", err)
+		return EmptyCmd
+	}
+	return TranscriptionReceived{transcription: transcription}
+}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -262,8 +285,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return ReadyCompletion{completion: msg.completion, addContent: false}
 		}
-	// case DownloadWhispercppModel:
-	// 	m, ok := m.transcriber.(*WhispercppTranscriber)
+	case DownloadWhisperModel:
+		m.downloadingModel = true
+		m.UpdateStatus("Downloading model")
+		return m, func() tea.Msg {
+			m, ok := m.transcriber.(*transriber.WhispercppTranscriber)
+			if !ok {
+				log.Println("Error casting transcriber to WhispercppTranscriber")
+				return ""
+			}
+			err := m.DownloadModel(msg.model)
+			if err != nil {
+				return FinishDownloadingWhisperModel{err: "Failed to download whisper model"}
+			}
+			return FinishDownloadingWhisperModel{}
+		}
+	case FinishDownloadingWhisperModel:
+		m.downloadingModel = false
+		if msg.err != "" {
+			m.UpdateStatus(msg.err)
+			return m, EmptyCmd
+		}
+
+		m.UpdateStatus("Model downloaded")
+		return m, GetTranscription(m)
+
 	case StatusChanged:
 		m.UpdateStatus(msg.status)
 	case ReadyCompletion:
@@ -401,6 +447,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.ScrollUp(1)
 			return m, EmptyCmd
 		case "ctrl+b":
+			if m.downloadingModel {
+				m.UpdateStatus("Please wait for the model to download")
+				return m, EmptyCmd
+			}
+
 			if m.cancelSpeak != nil {
 				m.cancelSpeak()
 			}
@@ -412,15 +463,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.recorder.IsRecording() {
 				m.recorder.Stop()
 				m.UpdateStatus("Ready")
-				return m, func() tea.Msg {
-					transcription, err := m.transcriber.Transcribe(m.recorder.Content)
-					log.Println(transcription)
-					if err != nil {
-						log.Printf("Error transcribing audio: %v\n", err)
-						return EmptyCmd
-					}
-					return TranscriptionReceived{transcription: transcription}
-				}
+				return m, GetTranscription(m)
 			}
 
 			m.UpdateStatus("Recording")

@@ -17,7 +17,9 @@ static void whisper_disable_logging() {
 import "C"
 
 import (
+	"errors"
 	"lazylang/utils"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -50,6 +52,11 @@ func int16ToFloat32(input []int16) []float32 {
     return output
 }
 
+var ErrNoModel = errors.New("No model found")
+func (m WhispercppTranscriber) DownloadModel(model string) error {
+	return errors.New("Not implemented")
+}
+
 func (m WhispercppTranscriber) Transcribe(audioData []int16) (string, error) {
 	samples := int16ToFloat32(audioData)
 	modelName := strings.TrimRight(m.model, ".bin")
@@ -58,6 +65,11 @@ func (m WhispercppTranscriber) Transcribe(audioData []int16) (string, error) {
 
 	// Load the model
 	model, err := whisper.New(modelPath)
+
+	if errors.Is(err, os.ErrNotExist) {
+		return "", ErrNoModel
+	}
+
 	if err != nil {
 		return "", err
 	}
