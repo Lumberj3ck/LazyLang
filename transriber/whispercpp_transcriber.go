@@ -18,7 +18,9 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"lazylang/utils"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,8 +54,41 @@ func int16ToFloat32(input []int16) []float32 {
     return output
 }
 
+const(
+	srcExt  = ".bin"                                                       // Filename extension
+	srcUrl  = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/" // The location of the models
+)
+
+// URLForModel returns the URL for the given model on huggingface.co
+func URLForModel(model string) (string, error) {
+	// Ensure "ggml-" prefix is added only once
+	if !strings.HasPrefix(model, "ggml-") {
+		model = "ggml-" + model
+	}
+
+	// Ensure ".bin" extension is added only once
+	if filepath.Ext(model) != srcExt {
+		model += srcExt
+	}
+
+	// Parse the base URL
+	url, err := url.Parse(srcUrl)
+	if err != nil {
+		return "", err
+	}
+
+	// Ensure no trailing slash in the base URL
+	url.Path = fmt.Sprintf("%s/%s", strings.TrimSuffix(url.Path, "/"), model)
+	return url.String(), nil
+}
+
 var ErrNoModel = errors.New("No model found")
-func (m WhispercppTranscriber) DownloadModel(model string) error {
+
+var(
+bufSize = 1024 * 64                                                    // Size of the buffer used for downloading the model
+)
+func (m WhispercppTranscriber) DownloadModel(model string, report chan int64) error {
+	// Start download plus progress reporting
 	return errors.New("Not implemented")
 }
 
@@ -96,3 +131,4 @@ func (m WhispercppTranscriber) Transcribe(audioData []int16) (string, error) {
 	}
 	return res.String(), nil
 }
+

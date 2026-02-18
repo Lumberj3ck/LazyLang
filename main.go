@@ -30,9 +30,8 @@ import (
 const (
 	groqAPIBaseURL = "https://api.groq.com/openai/v1"
 )
+
 var groqAudioAPIURL = fmt.Sprintf("%v/audio/transcriptions", groqAPIBaseURL)
-
-
 
 const (
 	scrolloff = 2
@@ -40,24 +39,24 @@ const (
 
 var isAlpha = regexp.MustCompile(`[\p{L}]+`)
 
-
 type model struct {
-	llmChain    *chains.LLMChain
-	viewport    viewport.Model
-	content     string
-	ready       bool
-	recorder    *Recorder
-	apiKey      string
-	piperVoice  *piper.PiperVoice
-	status      string
-	focusWord   int
-	focusRow    int
-	fullWidth   int
-	cancelSpeak context.CancelFunc
-	wordsStore  *WordsStore
-	config      Config
-	transcriber transriber.Transcriber
+	llmChain         *chains.LLMChain
+	viewport         viewport.Model
+	content          string
+	ready            bool
+	recorder         *Recorder
+	apiKey           string
+	piperVoice       *piper.PiperVoice
+	status           string
+	focusWord        int
+	focusRow         int
+	fullWidth        int
+	cancelSpeak      context.CancelFunc
+	wordsStore       *WordsStore
+	config           Config
+	transcriber      transriber.Transcriber
 	downloadingModel bool
+	downloadReport   chan int64
 }
 
 func initialModel(apiKey string, config Config) model {
@@ -95,13 +94,13 @@ func initialModel(apiKey string, config Config) model {
 		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
 	}
 	return model{
-		llmChain:   llmChain,
-		recorder:   NewRecorder(),
-		apiKey:     apiKey,
-		status:     "Ready",
-		piperVoice: piperVoice,
-		wordsStore: NewWordsStore(),
-		config:     config,
+		llmChain:    llmChain,
+		recorder:    NewRecorder(),
+		apiKey:      apiKey,
+		status:      "Ready",
+		piperVoice:  piperVoice,
+		wordsStore:  NewWordsStore(),
+		config:      config,
 		transcriber: transcriber,
 	}
 }
@@ -253,25 +252,53 @@ type DownloadWhisperModel struct {
 	model string
 }
 
-type FinishDownloadingWhisperModel struct {err string}
+type FinishDownloadingWhisperModel struct{ err string }
 
 func getWrappedContent(content string, width int) string {
 	return lipgloss.NewStyle().Width(width).Render(content)
 }
 
-func GetTranscription(m model) tea.Cmd{
+func GetTranscription(m model) tea.Cmd {
 	return func() tea.Msg {
-	transcription, err := m.transcriber.Transcribe(m.recorder.Content)
-	if errors.Is(err, transriber.ErrNoModel) {
-		return DownloadWhisperModel{model: m.config.STTBackend.Model}
+		transcription, err := m.transcriber.Transcribe(m.recorder.Content)
+		if errors.Is(err, transriber.ErrNoModel) {
+			return DownloadWhisperModel{model: m.config.STTBackend.Model}
+		}
+		log.Println(transcription)
+		if err != nil {
+			log.Printf("Error transcribing audio: %v\n", err)
+			return EmptyCmd
+		}
+		return TranscriptionReceived{transcription: transcription}
 	}
-	log.Println(transcription)
-	if err != nil {
-		log.Printf("Error transcribing audio: %v\n", err)
-		return EmptyCmd
-	}
-	return TranscriptionReceived{transcription: transcription}
 }
+
+func StartDownloadWhisperModel(m model, msg DownloadWhisperModel) tea.Cmd {
+	return func() tea.Msg {
+		tr, ok := m.transcriber.(*transriber.WhispercppTranscriber)
+		if !ok {
+			log.Println("Error casting transcriber to WhispercppTranscriber")
+			return ""
+		}
+		err := tr.DownloadModel(msg.model, m.downloadReport)
+		if err != nil {
+			return FinishDownloadingWhisperModel{err: "Failed to download whisper model"}
+		}
+		return FinishDownloadingWhisperModel{}
+	}
+}
+
+type DownloadReportReceived struct {
+	pct int64	
+}
+
+func DownloadReport(m model) tea.Cmd {
+	return func() tea.Msg {
+		for pct := range m.downloadReport {
+			return DownloadReportReceived{pct: pct}
+		}
+		return ""
+	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -285,21 +312,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return ReadyCompletion{completion: msg.completion, addContent: false}
 		}
+	case DownloadReportReceived:
+		// TODO: Show download progress
+		return m, DownloadReport(m)
 	case DownloadWhisperModel:
 		m.downloadingModel = true
 		m.UpdateStatus("Downloading model")
-		return m, func() tea.Msg {
-			m, ok := m.transcriber.(*transriber.WhispercppTranscriber)
-			if !ok {
-				log.Println("Error casting transcriber to WhispercppTranscriber")
-				return ""
-			}
-			err := m.DownloadModel(msg.model)
-			if err != nil {
-				return FinishDownloadingWhisperModel{err: "Failed to download whisper model"}
-			}
-			return FinishDownloadingWhisperModel{}
-		}
+		return m, tea.Batch(StartDownloadWhisperModel(m, msg), DownloadReport(m))
+
 	case FinishDownloadingWhisperModel:
 		m.downloadingModel = false
 		if msg.err != "" {
@@ -559,7 +579,6 @@ func main() {
 		log.Fatalf("Error parsing config: %v", err)
 	}
 	slog.Info("Config", "config", config)
-
 
 	p := tea.NewProgram(
 		initialModel(apiKey, config),
