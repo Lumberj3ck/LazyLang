@@ -56,7 +56,6 @@ type model struct {
 	config           Config
 	transcriber      transriber.Transcriber
 	downloadingModel bool
-	downloadReport   chan int64
 }
 
 func initialModel(apiKey string, config Config) model {
@@ -262,6 +261,7 @@ func GetTranscription(m model) tea.Cmd {
 	return func() tea.Msg {
 		transcription, err := m.transcriber.Transcribe(m.recorder.Content)
 		if errors.Is(err, transriber.ErrNoModel) {
+			log.Println("DOwnloading model")
 			return DownloadWhisperModel{model: m.config.STTBackend.Model}
 		}
 		log.Println(transcription)
@@ -280,8 +280,9 @@ func StartDownloadWhisperModel(m model, msg DownloadWhisperModel) tea.Cmd {
 			log.Println("Error casting transcriber to WhispercppTranscriber")
 			return ""
 		}
-		err := tr.DownloadModel(msg.model, m.downloadReport)
+		err := tr.DownloadModel(msg.model)
 		if err != nil {
+			log.Printf("Error downloading model: %v", err)
 			return FinishDownloadingWhisperModel{err: "Failed to download whisper model"}
 		}
 		return FinishDownloadingWhisperModel{}
@@ -292,9 +293,9 @@ type DownloadReportReceived struct {
 	pct int64	
 }
 
-func DownloadReport(m model) tea.Cmd {
+func DownloadReport(downloadReport chan int64) tea.Cmd {
 	return func() tea.Msg {
-		for pct := range m.downloadReport {
+		for pct := range downloadReport {
 			return DownloadReportReceived{pct: pct}
 		}
 		return ""
@@ -313,12 +314,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return ReadyCompletion{completion: msg.completion, addContent: false}
 		}
 	case DownloadReportReceived:
-		// TODO: Show download progress
-		return m, DownloadReport(m)
+		m.UpdateStatus(fmt.Sprintf("Downloading model: %d%%", msg.pct))
+		tr, ok := m.transcriber.(*transriber.WhispercppTranscriber)
+
+		if !ok {
+			log.Println("Error casting transcriber to WhispercppTranscriber")
+		} else {
+			return m, DownloadReport(tr.DownloadReport)
+		}
 	case DownloadWhisperModel:
 		m.downloadingModel = true
 		m.UpdateStatus("Downloading model")
-		return m, tea.Batch(StartDownloadWhisperModel(m, msg), DownloadReport(m))
+		tr, ok := m.transcriber.(*transriber.WhispercppTranscriber)
+
+		if !ok {
+			log.Println("Error casting transcriber to WhispercppTranscriber")
+		} else {
+			return m, tea.Batch(StartDownloadWhisperModel(m, msg), DownloadReport(tr.DownloadReport))
+		}
 
 	case FinishDownloadingWhisperModel:
 		m.downloadingModel = false
