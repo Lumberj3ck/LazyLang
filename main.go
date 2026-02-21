@@ -273,14 +273,14 @@ func GetTranscription(m model) tea.Cmd {
 	}
 }
 
-func StartDownloadWhisperModel(m model, msg DownloadWhisperModel) tea.Cmd {
+func StartDownloadWhisperModel(m model, msg DownloadWhisperModel, downloadReport chan int64) tea.Cmd {
 	return func() tea.Msg {
 		tr, ok := m.transcriber.(*transriber.WhispercppTranscriber)
 		if !ok {
 			log.Println("Error casting transcriber to WhispercppTranscriber")
 			return ""
 		}
-		err := tr.DownloadModel(msg.model)
+		err := tr.DownloadModel(msg.model, downloadReport)
 		if err != nil {
 			log.Printf("Error downloading model: %v", err)
 			return FinishDownloadingWhisperModel{err: "Failed to download whisper model"}
@@ -291,48 +291,44 @@ func StartDownloadWhisperModel(m model, msg DownloadWhisperModel) tea.Cmd {
 
 type DownloadReportReceived struct {
 	pct int64
+	modelType string // STT or TTS
+	downloadReport chan int64
 }
 
-func DownloadReport(downloadReport chan int64) tea.Cmd {
+func DownloadReport(downloadReport chan int64, modelType string) tea.Cmd {
 	return func() tea.Msg {
 		for pct := range downloadReport {
-			return DownloadReportReceived{pct: pct}
+			return DownloadReportReceived{pct: pct, modelType: modelType, downloadReport: downloadReport}
 		}
 		return ""
 	}
+}
+
+func StartDownloadPiperModel(msg DownloadPiperModel, downloadReport chan int64) tea.Cmd {
+return func() tea.Msg {
+			err := piper.DownloadVoice(msg.language, msg.model, downloadReport)
+			if err != nil {
+				return StatusChanged{status: "Failed to download model"}
+			}
+			return ReadyCompletion{completion: msg.completion, addContent: false}
+		}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case DownloadPiperModel:
 		m.UpdateStatus("Downloading tts model")
-		return m, func() tea.Msg {
-			err := piper.DownloadVoice(msg.language, msg.model)
-			if err != nil {
-				return StatusChanged{status: "Failed to download model"}
-			}
-			return ReadyCompletion{completion: msg.completion, addContent: false}
-		}
-	case DownloadReportReceived:
-		m.UpdateStatus(fmt.Sprintf("Downloading model: %d%%", msg.pct))
-		tr, ok := m.transcriber.(*transriber.WhispercppTranscriber)
-
-		if !ok {
-			log.Println("Error casting transcriber to WhispercppTranscriber")
-		} else {
-			return m, DownloadReport(tr.DownloadReport)
-		}
+		downloadReport := make(chan int64, 10)
+		return m, tea.Batch(StartDownloadPiperModel(msg, downloadReport), DownloadReport(downloadReport, "TTS"))
 	case DownloadWhisperModel:
 		m.downloadingModel = true
 		m.UpdateStatus("Downloading model")
-		tr, ok := m.transcriber.(*transriber.WhispercppTranscriber)
 
-		if !ok {
-			log.Println("Error casting transcriber to WhispercppTranscriber")
-		} else {
-			return m, tea.Batch(StartDownloadWhisperModel(m, msg), DownloadReport(tr.DownloadReport))
-		}
-
+		downloadReport := make(chan int64, 10)
+		return m, tea.Batch(StartDownloadWhisperModel(m, msg, downloadReport), DownloadReport(downloadReport, "STT"))
+	case DownloadReportReceived:
+		m.UpdateStatus(fmt.Sprintf("Downloading %s model: %d%%", msg.modelType, msg.pct))
+		return m, DownloadReport(msg.downloadReport, msg.modelType)
 	case FinishDownloadingWhisperModel:
 		m.downloadingModel = false
 		if msg.err != "" {

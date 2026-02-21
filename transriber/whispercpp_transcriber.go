@@ -43,14 +43,12 @@ type WhispercppTranscriber struct {
 	language       string
 	cancel         context.CancelFunc
 	mu             sync.Mutex
-	DownloadReport chan int64
 }
 
 func NewWhispercppTranscriber(model string, language string) *WhispercppTranscriber {
 	return &WhispercppTranscriber{
 		model:          model,
 		language:       language,
-		DownloadReport: make(chan int64, 10),
 	}
 }
 
@@ -105,7 +103,7 @@ func (m *WhispercppTranscriber) CancelDownload() {
 	}
 }
 
-func (m *WhispercppTranscriber) DownloadModel(model string) error {
+func (m *WhispercppTranscriber) DownloadModel(model string, downloadReport chan int64) error {
 	m.mu.Lock()
 	if m.cancel != nil {
 		m.cancel()
@@ -119,7 +117,9 @@ func (m *WhispercppTranscriber) DownloadModel(model string) error {
 		return err
 	}
 
-	err = utils.DownloadModel(ctx, url, whisperModelsDir, m.DownloadReport)
+	err = utils.DownloadModel(ctx, url, whisperModelsDir, downloadReport)
+	close(downloadReport)
+
 	if err != nil {
 		return err
 	}

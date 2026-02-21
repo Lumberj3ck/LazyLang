@@ -179,7 +179,7 @@ func ListVoices(language string) error {
 }
 
 // DownloadVoice downloads a voice model and its config file
-func DownloadVoice(language string, voice string) error {
+func DownloadVoice(language string, voice string, downloadReport chan int64) error {
 	voices, err := FetchVoices()
 	if err != nil {
 		return err
@@ -206,7 +206,6 @@ func DownloadVoice(language string, voice string) error {
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
-	downloadReport := make(chan int64, 10)
 
 	// Download each file associated with the voice
 	for filename := range voiceInfo.Files {
@@ -216,7 +215,14 @@ func DownloadVoice(language string, voice string) error {
 		log.Println("Downloading", downloadURL)
 
 		err = utils.DownloadModel(ctx, downloadURL, voicesDir, downloadReport)
+		if err != nil {
+			log.Printf("Error downloading model: %v", err)
+			close(downloadReport)
+			return err
+		}
 	}
+
+	close(downloadReport)
 	return nil
 }
 
