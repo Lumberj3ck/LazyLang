@@ -290,7 +290,7 @@ func StartDownloadWhisperModel(m model, msg DownloadWhisperModel) tea.Cmd {
 }
 
 type DownloadReportReceived struct {
-	pct int64	
+	pct int64
 }
 
 func DownloadReport(downloadReport chan int64) tea.Cmd {

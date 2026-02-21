@@ -40,17 +40,17 @@ func init() {
 var whisperModelsDir = filepath.Join(utils.GetProjectPath(), "whisper-models")
 
 type WhispercppTranscriber struct {
-	model    string // Path to the model
-	language string
-	cancel   context.CancelFunc
-	mu       sync.Mutex
-	DownloadReport   chan int64
+	model          string // Path to the model
+	language       string
+	cancel         context.CancelFunc
+	mu             sync.Mutex
+	DownloadReport chan int64
 }
 
 func NewWhispercppTranscriber(model string, language string) *WhispercppTranscriber {
 	return &WhispercppTranscriber{
-		model:    model,
-		language: language,
+		model:          model,
+		language:       language,
 		DownloadReport: make(chan int64, 10),
 	}
 }
@@ -97,6 +97,14 @@ var ErrNoModel = errors.New("No model found")
 var (
 	bufSize = 1024 * 64 // Size of the buffer used for downloading the model
 )
+
+func (m *WhispercppTranscriber) CancelDownload() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.cancel != nil {
+		m.cancel()
+	}
+}
 
 func (m *WhispercppTranscriber) DownloadModel(model string) error {
 	m.mu.Lock()
@@ -173,7 +181,7 @@ func (m *WhispercppTranscriber) DownloadModel(model string) error {
 			log.Println("New data")
 			if readErr != nil {
 				return err
-			} 
+			}
 		}
 	}
 }
@@ -201,7 +209,7 @@ func (m *WhispercppTranscriber) Transcribe(audioData []int16) (string, error) {
 
 	// Load the model
 	model, err := whisper.New(modelPath)
-	if errors.Is(err, os.ErrNotExist){
+	if errors.Is(err, os.ErrNotExist) {
 		return "", ErrNoModel
 	}
 
@@ -232,4 +240,3 @@ func (m *WhispercppTranscriber) Transcribe(audioData []int16) (string, error) {
 	}
 	return res.String(), nil
 }
-

@@ -13,8 +13,8 @@ import (
 // WAV header constants
 const (
 	wavHeaderSize = 44
-	SampleRate = 16000
-	Channels   = 1
+	SampleRate    = 16000
+	Channels      = 1
 )
 
 var groqAudioAPIURL = "https://api.groq.com/openai/v1/audio/transcriptions"
@@ -24,16 +24,16 @@ type GroqTranscriptionResponse struct {
 }
 
 type GroqTranscriber struct {
-	apiKey string
+	apiKey   string
 	language string
-	model string
+	model    string
 }
 
 func NewGroqTranscriber(model string, apiKey string, language string) *GroqTranscriber {
 	return &GroqTranscriber{
-		apiKey: apiKey,
+		apiKey:   apiKey,
 		language: language,
-		model: model,
+		model:    model,
 	}
 }
 
@@ -111,7 +111,6 @@ func (m GroqTranscriber) Transcribe(audioData []int16) (string, error) {
 	return transcriptionResp.Text, nil
 }
 
-
 // samplesToWAV converts raw audio samples to WAV format
 func samplesToWAV(samples []int16, sampleRate, channels int) []byte {
 	var buf bytes.Buffer
@@ -147,4 +146,3 @@ func samplesToWAV(samples []int16, sampleRate, channels int) []byte {
 
 	return buf.Bytes()
 }
-

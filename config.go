@@ -38,7 +38,7 @@ const (
 type STTBackend struct {
 	// hosted, local
 	Type  STTType `json:"type"`
-	Model string `json:"model"`
+	Model string  `json:"model"`
 }
 
 func NewConfig() Config {
@@ -96,7 +96,7 @@ func CheckHostedSTT(config Config, apiKey string) error {
 
 	model := config.STTBackend.Model
 	url := fmt.Sprintf("%v/models/%v", groqAPIBaseURL, model)
-	req, err := http.NewRequest("GET", url , nil)
+	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {
 		return err
@@ -117,14 +117,14 @@ func CheckHostedSTT(config Config, apiKey string) error {
 	case http.StatusUnauthorized:
 		return invalidApiKey
 	default:
-		return errors.New("Invalid model STT backend model") 
+		return errors.New("Invalid model STT backend model")
 	}
 }
 
 func modelAvailable(url string) bool {
 	resp, err := http.Head(url)
 	if err != nil {
-			return false
+		return false
 	}
 	resp.Body.Close()
 	return resp.StatusCode == http.StatusOK

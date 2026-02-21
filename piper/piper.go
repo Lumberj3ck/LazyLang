@@ -105,21 +105,6 @@ func FetchVoices() (map[string]VoiceInfo, error) {
 	return voices, nil
 }
 
-func saveToFile(data []byte, filename string) error {
-	err := os.MkdirAll(voicesDir, 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create voices directory: %w", err)
-	}
-
-	filePath := filepath.Join(voicesDir, filename)
-	err = os.WriteFile(filePath, data, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write file %s: %w", filePath, err)
-	}
-
-	return nil
-}
-
 // ListLanguages prints all available languages for Piper TTS
 func ListLanguages() error {
 	voices, err := FetchVoices()
@@ -225,6 +210,8 @@ func DownloadVoice(language string, voice string) error {
 		return fmt.Errorf("failed to create voices directory: %w", err)
 	}
 
+	bufSize := 1024 * 64
+	data := make([]byte, bufSize)
 	// Download each file associated with the voice
 	for filename := range voiceInfo.Files {
 		// Build download URL based on voice key structure
@@ -242,15 +229,33 @@ func DownloadVoice(language string, voice string) error {
 			return fmt.Errorf("failed to download %s: status %d", filename, resp.StatusCode)
 		}
 
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", filename, err)
+		filePath := filepath.Join(voicesDir, filepath.Base(filename))
+		if info, err := os.Stat(filePath); err == nil && info.Size() != resp.ContentLength {
+			log.Printf("Skipping %s as it already exists", filename)
+			return nil
 		}
+		w, err := os.Create(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to create file %s: %w", filePath, err)
+		}
+		log.Println("New file")
 
-		// Extract just the filename from the path
-		localFilename := filepath.Base(filename)
-		if err := saveToFile(data, localFilename); err != nil {
-			return err
+		for {
+			n, readErr := resp.Body.Read(data)
+			if n > 0 {
+				_, err := w.Write(data[:n])
+				if readErr == io.EOF {
+					break
+				}
+
+				if err != nil {
+					return err
+				}
+			}
+
+			if readErr != nil {
+				return err
+			}
 		}
 	}
 
@@ -332,6 +337,13 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 			return ErrorModelNotFound{Model: p.Model, Language: p.Language}
 		}
 
+		modelCardFile := filepath.Join(voicesDir, fmt.Sprintf("%s.json", p.Model))
+		_, err = os.Stat(modelCardFile)
+		slog.Debug("Searching for", "modelCardFile", modelCardFile)
+		if err != nil {
+			return ErrorModelNotFound{Model: p.Model, Language: p.Language}
+		}
+
 		// Create piper command
 		// Piper reads from stdin and outputs WAV to stdout
 		piperCmd := exec.CommandContext(piper_ctx, "piper-tts", "--model", modelFile, "--output_raw")
@@ -361,10 +373,30 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 			ctx.Free()
 		}()
 
+		var raw map[string]any
+		data, err := os.ReadFile(modelCardFile)
+		if err != nil {
+			return err
+		}
+		json.Unmarshal(data, &raw)
+
+		audioCard, ok := raw["audio"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("error parsing audio card")
+		}
+
+		log.Println(audioCard)
+		rate, ok := audioCard["sample_rate"].(float64)
+		if !ok {
+			return fmt.Errorf("error parsing sample rate")
+		}
+
+		sampleRate := uint32(rate)
+
 		deviceConfig := malgo.DefaultDeviceConfig(malgo.Playback)
 		deviceConfig.Playback.Format = malgo.FormatS16
 		deviceConfig.Playback.Channels = 1
-		deviceConfig.SampleRate = 22050
+		deviceConfig.SampleRate = sampleRate
 		deviceConfig.Alsa.NoMMap = 1
 
 		reader := bufio.NewReaderSize(pipe, 64*1024)

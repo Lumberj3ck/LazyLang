@@ -116,4 +116,3 @@ func (r *Recorder) Stop() {
 	r.done = make(chan struct{})
 	r.finished = make(chan struct{})
 }
-
