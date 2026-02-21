@@ -205,13 +205,9 @@ func DownloadVoice(language string, voice string) error {
 		return fmt.Errorf("voice not found: %s (try ListVoices to see available voices)", voiceKey)
 	}
 
-	// Create voices directory
-	if err := os.MkdirAll(voicesDir, 0755); err != nil {
-		return fmt.Errorf("failed to create voices directory: %w", err)
-	}
+	ctx, _ := context.WithCancel(context.Background())
+	downloadReport := make(chan int64, 10)
 
-	bufSize := 1024 * 64
-	data := make([]byte, bufSize)
 	// Download each file associated with the voice
 	for filename := range voiceInfo.Files {
 		// Build download URL based on voice key structure
@@ -219,46 +215,8 @@ func DownloadVoice(language string, voice string) error {
 		downloadURL := fmt.Sprintf("%s/%s", baseDownloadURL, filename)
 		log.Println("Downloading", downloadURL)
 
-		resp, err := http.Get(downloadURL)
-		if err != nil {
-			return fmt.Errorf("failed to download %s: %w", filename, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to download %s: status %d", filename, resp.StatusCode)
-		}
-
-		filePath := filepath.Join(voicesDir, filepath.Base(filename))
-		if info, err := os.Stat(filePath); err == nil && info.Size() != resp.ContentLength {
-			log.Printf("Skipping %s as it already exists", filename)
-			return nil
-		}
-		w, err := os.Create(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to create file %s: %w", filePath, err)
-		}
-		log.Println("New file")
-
-		for {
-			n, readErr := resp.Body.Read(data)
-			if n > 0 {
-				_, err := w.Write(data[:n])
-				if readErr == io.EOF {
-					break
-				}
-
-				if err != nil {
-					return err
-				}
-			}
-
-			if readErr != nil {
-				return err
-			}
-		}
+		err = utils.DownloadModel(ctx, downloadURL, voicesDir, downloadReport)
 	}
-
 	return nil
 }
 
