@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,7 +21,8 @@ func GetProjectPath() string {
 }
 
 var (
-	bufSize = 1024 * 64 // Size of the buffer used for downloading the model
+	bufSize             = 1024 * 64 // Size of the buffer used for downloading the model
+	DownloadCanceledErr = errors.New("Whisper Model Download Canceled")
 )
 
 func DownloadModel(ctx context.Context, url string, dir string, downloadReport chan int64) error {
@@ -70,7 +72,7 @@ func DownloadModel(ctx context.Context, url string, dir string, downloadReport c
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return DownloadCanceledErr
 		case <-ticker.C:
 			if len(downloadReport) == cap(downloadReport) {
 				<-downloadReport

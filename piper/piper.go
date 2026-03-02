@@ -178,59 +178,12 @@ func ListVoices(language string) error {
 	return nil
 }
 
-// DownloadVoice downloads a voice model and its config file
-func DownloadVoice(language string, voice string, downloadReport chan int64) error {
-	voices, err := FetchVoices()
-	if err != nil {
-		return err
-	}
-
-	// Build the voice key to look up
-	voiceKey := strings.TrimRight(voice, ".onnx")
-
-	voiceInfo, exists := voices[voiceKey]
-	if !exists {
-		// Try finding a partial match
-		for key, v := range voices {
-			if strings.Contains(key, voice) && strings.HasPrefix(key, language) {
-				voiceKey = key
-				voiceInfo = v
-				exists = true
-				break
-			}
-		}
-	}
-
-	if !exists {
-		return fmt.Errorf("voice not found: %s (try ListVoices to see available voices)", voiceKey)
-	}
-
-	ctx, _ := context.WithCancel(context.Background())
-
-	// Download each file associated with the voice
-	for filename := range voiceInfo.Files {
-		// Build download URL based on voice key structure
-		// Voice keys are like "en_US-lessac-medium", files are like "en_US-lessac-medium.onnx"
-		downloadURL := fmt.Sprintf("%s/%s", baseDownloadURL, filename)
-		log.Println("Downloading", downloadURL)
-
-		err = utils.DownloadModel(ctx, downloadURL, voicesDir, downloadReport)
-		if err != nil {
-			log.Printf("Error downloading model: %v", err)
-			close(downloadReport)
-			return err
-		}
-	}
-
-	close(downloadReport)
-	return nil
-}
-
 type PiperVoice struct {
-	Language string
-	Model    string
-	speaking bool
-	mu       sync.RWMutex
+	Language       string
+	Model          string
+	speaking       bool
+	cancelDownload context.CancelFunc
+	mu             sync.RWMutex
 }
 
 type PiperOption func(*PiperVoice)
@@ -448,4 +401,66 @@ func (p *PiperVoice) Speak(piper_ctx context.Context, text string) error {
 	}()
 
 	return err
+}
+
+// DownloadVoice downloads a voice model and its config file
+func (p *PiperVoice) DownloadVoice(language string, voice string, downloadReport chan int64) error {
+	voices, err := FetchVoices()
+	if err != nil {
+		return err
+	}
+
+	// Build the voice key to look up
+	voiceKey := strings.TrimRight(voice, ".onnx")
+
+	voiceInfo, exists := voices[voiceKey]
+	if !exists {
+		// Try finding a partial match
+		for key, v := range voices {
+			if strings.Contains(key, voice) && strings.HasPrefix(key, language) {
+				voiceKey = key
+				voiceInfo = v
+				exists = true
+				break
+			}
+		}
+	}
+
+	if !exists {
+		return fmt.Errorf("voice not found: %s (try ListVoices to see available voices)", voiceKey)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	p.mu.Lock()
+	if p.cancelDownload != nil {
+		p.cancelDownload()
+	}
+	p.cancelDownload = cancel
+	p.mu.Unlock()
+
+	// Download each file associated with the voice
+	for filename := range voiceInfo.Files {
+		// Build download URL based on voice key structure
+		// Voice keys are like "en_US-lessac-medium", files are like "en_US-lessac-medium.onnx"
+		downloadURL := fmt.Sprintf("%s/%s", baseDownloadURL, filename)
+		log.Println("Downloading", downloadURL)
+
+		err = utils.DownloadModel(ctx, downloadURL, voicesDir, downloadReport)
+		if err != nil {
+			log.Printf("Error downloading model: %v", err)
+			close(downloadReport)
+			return err
+		}
+	}
+
+	close(downloadReport)
+	return nil
+}
+
+func (p *PiperVoice) CancelDownload() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.cancelDownload != nil {
+		p.cancelDownload()
+	}
 }

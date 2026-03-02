@@ -9,6 +9,7 @@ import (
 	"io"
 	"lazylang/piper"
 	"lazylang/transriber"
+	"lazylang/utils"
 	"log"
 	"log/slog"
 	"net/http"
@@ -281,6 +282,9 @@ func StartDownloadWhisperModel(m model, msg DownloadWhisperModel, downloadReport
 			return ""
 		}
 		err := tr.DownloadModel(msg.model, downloadReport)
+		if err == utils.DownloadCanceledErr {
+			return ""
+		}
 		if err != nil {
 			log.Printf("Error downloading model: %v", err)
 			return FinishDownloadingWhisperModel{err: "Failed to download whisper model"}
@@ -290,8 +294,8 @@ func StartDownloadWhisperModel(m model, msg DownloadWhisperModel, downloadReport
 }
 
 type DownloadReportReceived struct {
-	pct int64
-	modelType string // STT or TTS
+	pct            int64
+	modelType      string // STT or TTS
 	downloadReport chan int64
 }
 
@@ -304,14 +308,17 @@ func DownloadReport(downloadReport chan int64, modelType string) tea.Cmd {
 	}
 }
 
-func StartDownloadPiperModel(msg DownloadPiperModel, downloadReport chan int64) tea.Cmd {
-return func() tea.Msg {
-			err := piper.DownloadVoice(msg.language, msg.model, downloadReport)
-			if err != nil {
-				return StatusChanged{status: "Failed to download model"}
-			}
-			return ReadyCompletion{completion: msg.completion, addContent: false}
+func StartDownloadPiperModel(m model, msg DownloadPiperModel, downloadReport chan int64) tea.Cmd {
+	return func() tea.Msg {
+		err := m.piperVoice.DownloadVoice(msg.language, msg.model, downloadReport)
+		if err == utils.DownloadCanceledErr {
+			return ""
 		}
+		if err != nil {
+			return StatusChanged{status: "Failed to download model"}
+		}
+		return ReadyCompletion{completion: msg.completion, addContent: false}
+	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -319,7 +326,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case DownloadPiperModel:
 		m.UpdateStatus("Downloading tts model")
 		downloadReport := make(chan int64, 10)
-		return m, tea.Batch(StartDownloadPiperModel(msg, downloadReport), DownloadReport(downloadReport, "TTS"))
+		return m, tea.Batch(StartDownloadPiperModel(m, msg, downloadReport), DownloadReport(downloadReport, "TTS"))
 	case DownloadWhisperModel:
 		m.downloadingModel = true
 		m.UpdateStatus("Downloading model")
@@ -380,6 +387,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.cancelSpeak != nil {
 				m.cancelSpeak()
+			}
+			m.piperVoice.CancelDownload()
+			t, ok := m.transcriber.(*transriber.WhispercppTranscriber)
+			if ok {
+				t.CancelDownload()
 			}
 			m.UpdateStatus("Ready")
 		case "j":

@@ -39,16 +39,16 @@ func init() {
 var whisperModelsDir = filepath.Join(utils.GetProjectPath(), "whisper-models")
 
 type WhispercppTranscriber struct {
-	model          string // Path to the model
-	language       string
-	cancel         context.CancelFunc
-	mu             sync.Mutex
+	model    string // Path to the model
+	language string
+	cancel   context.CancelFunc
+	mu       sync.Mutex
 }
 
 func NewWhispercppTranscriber(model string, language string) *WhispercppTranscriber {
 	return &WhispercppTranscriber{
-		model:          model,
-		language:       language,
+		model:    model,
+		language: language,
 	}
 }
 
