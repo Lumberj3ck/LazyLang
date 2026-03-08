@@ -49,7 +49,7 @@ type model struct {
 	apiKey           string
 	piperVoice       *piper.PiperVoice
 	status           string
-	focusWord        int
+	focusColl        int
 	focusRow         int
 	fullWidth        int
 	cancelSpeak      context.CancelFunc
@@ -352,9 +352,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.addContent {
 			sanitisedCompletion := strings.ReplaceAll(msg.completion, "\n\n", "\n")
 			m.content = fmt.Sprintf("%sAI: %s \n", m.content, sanitisedCompletion)
-			highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusWord)
+			highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
 			setViewportContent(&m, highlightedCompletion)
 			m.viewport.GotoBottom()
+
+			// move cursor into view port if scrolled too much
+			if m.focusRow < m.viewport.YOffset{
+				m.focusRow = m.viewport.YOffset
+				highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
+				setViewportContent(&m, highlightedCompletion)
+			}
 		}
 
 		m.UpdateStatus("Speaking")
@@ -365,9 +372,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TranscriptionReceived:
 		m.content = fmt.Sprintf("%sYou:%s \n", m.content, msg.transcription)
-		highlighted := HighlightFocusWord(m.content, m.focusRow, m.focusWord)
+		highlighted := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
 		setViewportContent(&m, highlighted)
 		m.viewport.GotoBottom()
+
+		// move cursor into view port if scrolled too much
+		if m.focusRow < m.viewport.YOffset{
+			m.focusRow = m.viewport.YOffset
+			highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
+			setViewportContent(&m, highlightedCompletion)
+		}
 		return m, GetLlmCompletion(msg.transcription, m)
 
 	case TranslationReceived:
@@ -406,11 +420,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusRow++
 
 			focusedRow := rows[m.focusRow]
-			m.focusWord = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " "))-1, 0), m.focusWord)
+			m.focusColl = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " "))-1, 0), m.focusColl)
 
-			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusWord)
+			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusColl)
 			setViewportContent(&m, highlightedCompletion)
-			log.Printf("FocusWord j: %v %v", m.focusWord, m.focusRow)
+			log.Printf("FocusWord j: %v %v", m.focusColl, m.focusRow)
 
 			// If we're not at scrolloff, don't scroll
 			visibleLines := m.viewport.VisibleLineCount()
@@ -430,9 +444,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			focusedRow := rows[m.focusRow]
-			m.focusWord = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " "))-1, 0), m.focusWord)
+			m.focusColl = min(max(len(strings.Split(strings.TrimSpace(focusedRow), " "))-1, 0), m.focusColl)
 
-			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusWord)
+			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusColl)
 			setViewportContent(&m, highlightedCompletion)
 
 			// If we're not at scrolloff, don't scroll
@@ -447,17 +461,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			focusedRow := rows[m.focusRow]
-			if m.focusWord+1 >= len(strings.Split(focusedRow, " ")) && m.focusRow+1 >= len(rows) {
+			if m.focusColl+1 >= len(strings.Split(focusedRow, " ")) && m.focusRow+1 >= len(rows) {
 				break
 			}
 
-			if m.focusWord+1 >= len(strings.Split(strings.TrimSpace(focusedRow), " ")) {
+			if m.focusColl+1 >= len(strings.Split(strings.TrimSpace(focusedRow), " ")) {
 				m.focusRow++
-				m.focusWord = -1
+				m.focusColl = -1
 			}
 
-			m.focusWord++
-			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusWord)
+			m.focusColl++
+			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusColl)
 			setViewportContent(&m, highlightedCompletion)
 
 			// If we're not at scrolloff, don't scroll
@@ -468,17 +482,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.ScrollDown(1)
 		case "b":
 			wrappedCompletion := getWrappedContent(m.content, m.viewport.Width)
-			if m.focusWord-1 < 0 && m.focusRow-1 < 0 {
+			if m.focusColl-1 < 0 && m.focusRow-1 < 0 {
 				break
-			} else if m.focusWord-1 < 0 {
+			} else if m.focusColl-1 < 0 {
 				m.focusRow = max(0, m.focusRow-1)
 				rows := strings.Split(strings.TrimSpace(wrappedCompletion), "\n")
 				focusedRow := strings.Split(strings.TrimSpace(rows[m.focusRow]), " ")
-				m.focusWord = len(focusedRow)
+				m.focusColl = len(focusedRow)
 			}
 
-			m.focusWord--
-			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusWord)
+			m.focusColl--
+			highlightedCompletion := HighlightFocusWord(wrappedCompletion, m.focusRow, m.focusColl)
 			setViewportContent(&m, highlightedCompletion)
 
 			// If we're not at scrolloff, don't scroll
@@ -551,7 +565,7 @@ func (m model) getFocusedWord() string {
 	rows := strings.Split(strings.TrimSpace(m.content), "\n")
 
 	row := strings.TrimSpace(rows[m.focusRow])
-	return strings.Split(row, " ")[m.focusWord]
+	return strings.Split(row, " ")[m.focusColl]
 }
 
 func (m model) headerView() string {
