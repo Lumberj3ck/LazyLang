@@ -10,6 +10,7 @@ import (
 	"lazylang/piper"
 	"lazylang/transriber"
 	"lazylang/utils"
+	lazy_db "lazylang/db"
 	"log"
 	"log/slog"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/memory"
+	"github.com/tmc/langchaingo/memory/sqlite3"
 	"github.com/tmc/langchaingo/prompts"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -81,7 +83,17 @@ func initialModel(apiKey string, config Config) model {
 	)
 
 	llmChain := chains.NewLLMChain(llm, prompt)
-	llmChain.Memory = memory.NewConversationBuffer()
+	DefaultSchema := []byte(lazy_db.DefaultSchema)
+
+	persistendHistory := sqlite3.NewSqliteChatMessageHistory(sqlite3.WithDBAddress("chats.db"), sqlite3.WithSchema(DefaultSchema))
+	session_id, err := lazy_db.CreateChatSession(persistendHistory.DB)
+	if err != nil{
+		fmt.Printf("Error creating LLM: Error creating sql schema: %v\n", err)
+		os.Exit(1)
+	}
+	persistendHistory.Session = fmt.Sprintf("%d", session_id)
+
+	llmChain.Memory = memory.NewConversationBuffer(memory.WithChatHistory(persistendHistory))
 	piperVoice := piper.NewPiperVoice(piper.WithModel(config.TTSBackend.Voice), piper.WithLanguage(config.Language))
 
 	var transcriber transriber.Transcriber
