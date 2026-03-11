@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	lazy_db "lazylang/db"
 	"lazylang/piper"
 	"lazylang/transriber"
 	"lazylang/utils"
-	lazy_db "lazylang/db"
 	"log"
 	"log/slog"
 	"net/http"
@@ -24,10 +24,10 @@ import (
 	"github.com/tmc/langchaingo/memory/sqlite3"
 	"github.com/tmc/langchaingo/prompts"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
 )
 
 const (
@@ -36,6 +36,7 @@ const (
 
 var groqAudioAPIURL = fmt.Sprintf("%v/audio/transcriptions", groqAPIBaseURL)
 
+// var docStyle = lipgloss.NewStyle().Margin(1, 2)
 const (
 	scrolloff = 2
 )
@@ -43,6 +44,7 @@ const (
 var isAlpha = regexp.MustCompile(`[\p{L}]+`)
 
 type model struct {
+	chats            list.Model
 	llmChain         *chains.LLMChain
 	viewport         viewport.Model
 	content          string
@@ -54,11 +56,13 @@ type model struct {
 	focusColl        int
 	focusRow         int
 	fullWidth        int
+	fullHeight       int
 	cancelSpeak      context.CancelFunc
 	wordsStore       *WordsStore
 	config           Config
 	transcriber      transriber.Transcriber
 	downloadingModel bool
+	showChatSessions bool
 }
 
 func initialModel(apiKey string, config Config) model {
@@ -87,7 +91,7 @@ func initialModel(apiKey string, config Config) model {
 
 	persistendHistory := sqlite3.NewSqliteChatMessageHistory(sqlite3.WithDBAddress("chats.db"), sqlite3.WithSchema(DefaultSchema))
 	session_id, err := lazy_db.CreateChatSession(persistendHistory.DB)
-	if err != nil{
+	if err != nil {
 		fmt.Printf("Error creating LLM: Error creating sql schema: %v\n", err)
 		os.Exit(1)
 	}
@@ -105,7 +109,22 @@ func initialModel(apiKey string, config Config) model {
 	default:
 		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
 	}
+	chats, err := lazy_db.GetActiveChats(persistendHistory.DB)
+
+	items := make([]list.Item, len(chats))
+	for i, c := range chats {
+		items[i] = c
+	}
+
+	log.Println(items)
+	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+
+	l.SetShowTitle(false)
+	l.SetFilteringEnabled(false)
+	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
 	return model{
+		chats:       l,
 		llmChain:    llmChain,
 		recorder:    NewRecorder(),
 		apiKey:      apiKey,
@@ -369,7 +388,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.GotoBottom()
 
 			// move cursor into view port if scrolled too much
-			if m.focusRow < m.viewport.YOffset{
+			if m.focusRow < m.viewport.YOffset {
 				m.focusRow = m.viewport.YOffset
 				highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
 				setViewportContent(&m, highlightedCompletion)
@@ -389,7 +408,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 
 		// move cursor into view port if scrolled too much
-		if m.focusRow < m.viewport.YOffset{
+		if m.focusRow < m.viewport.YOffset {
 			m.focusRow = m.viewport.YOffset
 			highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
 			setViewportContent(&m, highlightedCompletion)
@@ -402,6 +421,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
 		case "enter":
+			if m.showChatSessions {
+				break
+			}
 			selectedWord := m.getFocusedWord()
 			clearedWord := isAlpha.FindString(selectedWord)
 			if clearedWord == "" {
@@ -513,6 +535,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.viewport.ScrollUp(1)
 			return m, EmptyCmd
+		case "ctrl+p":
+			m.showChatSessions = !m.showChatSessions
+			return m, EmptyCmd
 		case "ctrl+b":
 			if m.downloadingModel {
 				m.UpdateStatus("Please wait for the model to download")
@@ -543,6 +568,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.fullWidth = msg.Width
+		m.fullHeight = msg.Height
 		headerHeight := lipgloss.Height(m.headerView()) + 1
 		viewportWidth := msg.Width*3/4 + 1
 		viewportHeight := msg.Height - headerHeight
@@ -552,6 +578,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			viewport.YPosition = headerHeight
 			viewport.SetContent(m.content)
 			m.viewport = viewport
+			m.chats.SetSize(msg.Width*3/4, msg.Height*3/4)
+
 			m.ready = true
 		} else {
 			m.viewport.Width = viewportWidth
@@ -563,6 +591,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	m.viewport, cmd = m.viewport.Update(msg)
+	m.chats, cmd = m.chats.Update(msg)
+
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -610,7 +640,20 @@ func (m model) sidebarView() string {
 
 func (m model) View() string {
 	content := lipgloss.JoinHorizontal(lipgloss.Center, m.viewport.View(), m.sidebarView())
-	return fmt.Sprintf("%s\n%s\n", m.headerView(), content)
+	if m.showChatSessions {
+		popup := m.chats.View()
+
+		// Center the popup over the background
+		return lipgloss.Place(
+			m.fullWidth, m.fullHeight,
+			lipgloss.Center, lipgloss.Center,
+			popup,
+			lipgloss.WithWhitespaceChars(" "),
+		)
+	} else {
+		return fmt.Sprintf("%s\n%s\n", m.headerView(), content)
+	}
+
 }
 
 func main() {
@@ -648,33 +691,5 @@ func main() {
 	if err != nil {
 		fmt.Println("could not run program:", err)
 		os.Exit(1)
-	}
-}
-
-// waitForCtrlB waits for the user to press Ctrl+B
-func waitForCtrlB() error {
-	// Save terminal state
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return fmt.Errorf("failed to set raw mode: %w", err)
-	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
-
-	buf := make([]byte, 1)
-	for {
-		_, err := os.Stdin.Read(buf)
-		if err != nil {
-			return fmt.Errorf("failed to read input: %w", err)
-		}
-
-		// Ctrl+B is ASCII 2
-		if buf[0] == 2 {
-			return nil
-		}
-		// Ctrl+C is ASCII 3 - exit program
-		if buf[0] == 3 {
-			fmt.Println("\nExiting...")
-			os.Exit(0)
-		}
 	}
 }
