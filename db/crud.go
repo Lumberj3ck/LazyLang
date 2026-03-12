@@ -17,6 +17,7 @@ type Chat struct{
 	created time.Time
 }
 func (c Chat) Title() string       { return c.name }
+func (c Chat) GetId() int { return c.id }
 func (c Chat) Description() string { return c.created.String() }
 func (c Chat) FilterValue() string { return c.name }
 

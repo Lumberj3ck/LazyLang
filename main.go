@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,10 +17,12 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/tmc/langchaingo/chains"
+	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/memory"
 	"github.com/tmc/langchaingo/memory/sqlite3"
 	"github.com/tmc/langchaingo/prompts"
@@ -44,6 +47,7 @@ const (
 var isAlpha = regexp.MustCompile(`[\p{L}]+`)
 
 type model struct {
+	DB               *sql.DB
 	chats            list.Model
 	llmChain         *chains.LLMChain
 	viewport         viewport.Model
@@ -109,21 +113,14 @@ func initialModel(apiKey string, config Config) model {
 	default:
 		log.Fatalf("Error: Invalid STT backend %s", config.STTBackend.Type)
 	}
-	chats, err := lazy_db.GetActiveChats(persistendHistory.DB)
-
-	items := make([]list.Item, len(chats))
-	for i, c := range chats {
-		items[i] = c
-	}
-
-	log.Println(items)
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	l := list.New(nil, list.NewDefaultDelegate(), 0, 0)
 
 	l.SetShowTitle(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	return model{
+		DB:          persistendHistory.DB,
 		chats:       l,
 		llmChain:    llmChain,
 		recorder:    NewRecorder(),
@@ -422,7 +419,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch k := msg.String(); k {
 		case "enter":
 			if m.showChatSessions {
-				break
+				s := m.chats.SelectedItem()
+				c, ok := s.(lazy_db.Chat)
+				if !ok {
+					break
+				}
+
+				DefaultSchema := []byte(lazy_db.DefaultSchema)
+				persistendHistory := sqlite3.NewSqliteChatMessageHistory(sqlite3.WithDBAddress("chats.db"), sqlite3.WithSchema(DefaultSchema))
+				persistendHistory.Session = strconv.Itoa(c.GetId())
+				msgs, err := persistendHistory.Messages(context.Background())
+
+				if err != nil {
+					log.Printf("Couldn't load message from session with id %d: %s", c.GetId(), err.Error())
+					break
+				}
+				m.content = ""
+				for _, msg := range msgs {
+					switch msg.GetType() {
+					case llms.ChatMessageTypeAI:
+						m.content += fmt.Sprintf("AI: %s \n", msg.GetContent())
+					case llms.ChatMessageTypeHuman:
+						m.content += fmt.Sprintf("You: %s \n", msg.GetContent())
+					}
+				}
+				m.llmChain.Memory = memory.NewConversationBuffer(memory.WithChatHistory(persistendHistory))
+
+				m.DB.Close()
+				m.DB = persistendHistory.DB
+				m.focusColl = 0
+				m.focusRow = 0
+
+				highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
+				setViewportContent(&m, highlightedCompletion)
+				m.showChatSessions = false
+				return m, EmptyCmd
 			}
 			selectedWord := m.getFocusedWord()
 			clearedWord := isAlpha.FindString(selectedWord)
@@ -442,7 +473,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				t.CancelDownload()
 			}
 			m.UpdateStatus("Ready")
+			return m, EmptyCmd
 		case "j":
+			if m.showChatSessions {
+				break
+			}
 			wrappedCompletion := getWrappedContent(m.content, m.viewport.Width)
 			rows := strings.Split(strings.TrimSpace(wrappedCompletion), "\n")
 			if len(rows) == 0 || len(wrappedCompletion) == 0 {
@@ -466,6 +501,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, EmptyCmd
 			}
 		case "k":
+			if m.showChatSessions {
+				break
+			}
 			if m.focusRow-1 < 0 {
 				break
 			}
@@ -537,6 +575,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, EmptyCmd
 		case "ctrl+p":
 			m.showChatSessions = !m.showChatSessions
+			if m.showChatSessions {
+				chats, err := lazy_db.GetActiveChats(m.DB)
+				if err != nil{
+					log.Println("Couldn't retrieve chats ", err.Error())
+					break
+				}
+				items := make([]list.Item, len(chats))
+				for i, c := range chats {
+					items[i] = c
+				}
+				m.chats.SetItems(items)
+			}
 			return m, EmptyCmd
 		case "ctrl+b":
 			if m.downloadingModel {
