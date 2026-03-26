@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	lazy_db "lazylang/db"
@@ -13,7 +14,6 @@ import (
 	"lazylang/transriber"
 	"lazylang/utils"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"regexp"
@@ -69,7 +69,7 @@ type model struct {
 	showChatSessions bool
 }
 
-func initialModel(apiKey string, config Config) model {
+func initialModel(apiKey string, propose bool, config Config) model {
 	llm, err := NewLLM()
 	if err != nil {
 		fmt.Printf("Error creating LLM: %v\n", err)
@@ -93,15 +93,32 @@ func initialModel(apiKey string, config Config) model {
 	llmChain := chains.NewLLMChain(llm, prompt)
 	DefaultSchema := []byte(lazy_db.DefaultSchema)
 
-	persistendHistory := sqlite3.NewSqliteChatMessageHistory(sqlite3.WithDBAddress("chats.db"), sqlite3.WithSchema(DefaultSchema))
-	session_id, err := lazy_db.CreateChatSession(persistendHistory.DB)
+	persistedHistory := sqlite3.NewSqliteChatMessageHistory(sqlite3.WithDBAddress("chats.db"), sqlite3.WithSchema(DefaultSchema))
+	session_id, err := lazy_db.CreateChatSession(persistedHistory.DB)
 	if err != nil {
 		fmt.Printf("Error creating LLM: Error creating sql schema: %v\n", err)
 		os.Exit(1)
 	}
-	persistendHistory.Session = fmt.Sprintf("%d", session_id)
+	persistedHistory.Session = fmt.Sprintf("%d", session_id)
 
-	llmChain.Memory = memory.NewConversationBuffer(memory.WithChatHistory(persistendHistory))
+	var topic string
+	if propose {
+		topic, err = llms.GenerateFromSinglePrompt(context.Background(), llm,
+			fmt.Sprintf("Propose a random conversation topic or question in %s. Choose from a wide variety of subjects: hobbies, travel, food, culture, work, dreams, nature, technology, sports, art, etc. Reply only with the topic or question itself, nothing else.", config.Language),
+			llms.WithTemperature(2),
+		)
+		if err != nil {
+			fmt.Println("Couldn't propose topic failed with: ", err.Error())
+			os.Exit(1)
+		}
+		err = persistedHistory.AddAIMessage(context.Background(), topic)
+		if err != nil {
+			fmt.Println("Failed to add starting topic: ", err.Error())
+			os.Exit(1)
+		}
+	}
+
+	llmChain.Memory = memory.NewConversationBuffer(memory.WithChatHistory(persistedHistory))
 	piperVoice := piper.NewPiperVoice(piper.WithModel(config.TTSBackend.Voice), piper.WithLanguage(config.Language))
 
 	var transcriber transriber.Transcriber
@@ -120,7 +137,7 @@ func initialModel(apiKey string, config Config) model {
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	return model{
-		DB:          persistendHistory.DB,
+		DB:          persistedHistory.DB,
 		chats:       l,
 		llmChain:    llmChain,
 		recorder:    NewRecorder(),
@@ -129,6 +146,12 @@ func initialModel(apiKey string, config Config) model {
 		piperVoice:  piperVoice,
 		wordsStore:  NewWordsStore(),
 		config:      config,
+		content: func() string {
+			if topic != "" {
+				return fmt.Sprintf("AI: %s \n", topic)
+			}
+			return ""
+		}(),
 		transcriber: transcriber,
 	}
 }
@@ -635,6 +658,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Width = viewportWidth
 			m.viewport.Height = viewportHeight
 		}
+		highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
+		setViewportContent(&m, highlightedCompletion)
 	}
 
 	var cmds []tea.Cmd
@@ -718,10 +743,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error parsing config: %v", err)
 	}
-	slog.Info("Config", "config", config)
+
+	proposeTopic := flag.Bool("propose", false, "When this flag is specified conversation topic will be proposed")
+	flag.Parse()
 
 	p := tea.NewProgram(
-		initialModel(apiKey, config),
+		initialModel(apiKey, *proposeTopic, config),
 		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 	)
