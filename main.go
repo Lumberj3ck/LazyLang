@@ -67,6 +67,7 @@ type model struct {
 	transcriber      transriber.Transcriber
 	downloadingModel bool
 	showChatSessions bool
+	initialTopic     string
 }
 
 func initialModel(apiKey string, propose bool, config Config) model {
@@ -137,22 +138,18 @@ func initialModel(apiKey string, propose bool, config Config) model {
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	return model{
-		DB:          persistedHistory.DB,
-		chats:       l,
-		llmChain:    llmChain,
-		recorder:    NewRecorder(),
-		apiKey:      apiKey,
-		status:      "Ready",
-		piperVoice:  piperVoice,
-		wordsStore:  NewWordsStore(),
-		config:      config,
-		content: func() string {
-			if topic != "" {
-				return fmt.Sprintf("AI: %s \n", topic)
-			}
-			return ""
-		}(),
-		transcriber: transcriber,
+		DB:           persistedHistory.DB,
+		chats:        l,
+		llmChain:     llmChain,
+		recorder:     NewRecorder(),
+		apiKey:       apiKey,
+		status:       "Ready",
+		piperVoice:   piperVoice,
+		wordsStore:   NewWordsStore(),
+		config:       config,
+		content:      "",
+		transcriber:  transcriber,
+		initialTopic: topic,
 	}
 }
 
@@ -373,6 +370,7 @@ func StartDownloadPiperModel(m model, msg DownloadPiperModel, downloadReport cha
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var initialTopicCmd tea.Cmd
 	switch msg := msg.(type) {
 	case DownloadPiperModel:
 		m.UpdateStatus("Downloading tts model")
@@ -600,7 +598,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showChatSessions = !m.showChatSessions
 			if m.showChatSessions {
 				chats, err := lazy_db.GetActiveChats(m.DB)
-				if err != nil{
+				if err != nil {
 					log.Println("Couldn't retrieve chats ", err.Error())
 					break
 				}
@@ -660,6 +658,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		highlightedCompletion := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
 		setViewportContent(&m, highlightedCompletion)
+		if m.initialTopic != "" {
+			topic := m.initialTopic
+			m.initialTopic = ""
+			initialTopicCmd = func() tea.Msg {
+				return ReadyCompletion{completion: topic, addContent: true}
+			}
+		}
 	}
 
 	var cmds []tea.Cmd
@@ -669,6 +674,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.chats, cmd = m.chats.Update(msg)
 
 	cmds = append(cmds, cmd)
+	if initialTopicCmd != nil {
+		cmds = append(cmds, initialTopicCmd)
+	}
 	return m, tea.Batch(cmds...)
 }
 
