@@ -31,3 +31,8 @@ func (ws *WordsStore) Add(word string, meaning string) {
 	}
 	ws.words[word] = meaning
 }
+
+func (ws *WordsStore) Get(word string) (string, bool) {
+	meaning, ok := ws.words[word]
+	return meaning, ok
+}

@@ -235,6 +235,10 @@ type TranslationReceived struct {
 
 func GetTranslation(word string, m model) tea.Cmd {
 	return func() tea.Msg {
+		lower := strings.ToLower(word)
+		if translation, ok := m.wordsStore.Get(lower); ok {
+			return TranslationReceived{Word: word, Translation: translation}
+		}
 		translator, err := NewLLM(WithModel(m.config.TranslationModel))
 		if err != nil {
 			log.Printf("Error creating translation model: %v", err)
@@ -405,7 +409,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, GetLlmCompletion(msg.transcription, m)
 
 	case TranslationReceived:
-		m.wordsStore.Add(msg.Word, msg.Translation)
+		m.wordsStore.Add(strings.ToLower(msg.Word), msg.Translation)
 
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
