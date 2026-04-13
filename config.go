@@ -22,7 +22,7 @@ type TTSBackend struct {
 type Config struct {
 	Language                  string     `json:"language"`
 	TargetTranslationLanguage string     `json:"target_translation_language"`
-	LibreTranslateURL         string     `json:"libre_translate_url"`
+	TranslationModel          string     `json:"translation_model"`
 	TTSBackend                TTSBackend `json:"tts_backend"`
 	// whispercpp, hosted whispercpp
 	STTBackend STTBackend `json:"stt_backend"`
@@ -45,7 +45,7 @@ func NewConfig() Config {
 	return Config{
 		Language:                  "de",
 		TargetTranslationLanguage: "en",
-		LibreTranslateURL:         "http://localhost:5000",
+		TranslationModel:          "openai/gpt-oss-120b",
 		TTSBackend: TTSBackend{
 			Type:  "piper",
 			Voice: "de_DE-karlsson-low.onnx",
@@ -172,8 +172,9 @@ func resolvePiperVoice(language string, defaultConfig Config) (string, string) {
 
 func populateDefaults(config Config) Config {
 	defaultConfig := NewConfig()
-	if config.LibreTranslateURL == "" {
-		config.LibreTranslateURL = defaultConfig.LibreTranslateURL
+
+	if config.TranslationModel == "" {
+		config.TranslationModel = defaultConfig.TranslationModel
 	}
 
 	if config.TTSBackend.Type == "" {

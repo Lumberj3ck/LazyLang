@@ -1,20 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	lazy_db "lazylang/db"
 	"lazylang/piper"
 	"lazylang/transriber"
 	"lazylang/utils"
 	"log"
-	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -239,48 +235,23 @@ type TranslationReceived struct {
 
 func GetTranslation(word string, m model) tea.Cmd {
 	return func() tea.Msg {
-		baseURL := os.Getenv("LIBRETRANSLATE_URL")
-		if baseURL == "" {
-			baseURL = m.config.LibreTranslateURL
-		}
-
-		reqBody, err := json.Marshal(map[string]string{
-			"q":      word,
-			"source": m.config.Language,
-			"target": m.config.TargetTranslationLanguage,
-			"format": "text",
-		})
+		translator, err := NewLLM(WithModel(m.config.TranslationModel))
 		if err != nil {
-			log.Printf("Error marshaling translation request: %v", err)
+			log.Printf("Error creating translation model: %v", err)
 			return StatusChanged{status: "Failed to translate"}
 		}
-
-		resp, err := http.Post(baseURL+"/translate", "application/json", bytes.NewReader(reqBody))
+		prompt := fmt.Sprintf("Translate the single word '%s' from %s to %s. Respond only with the translation.", word, m.config.Language, m.config.TargetTranslationLanguage)
+		translation, err := llms.GenerateFromSinglePrompt(context.Background(), translator, prompt, llms.WithTemperature(0))
 		if err != nil {
-			log.Printf("Error calling LibreTranslate: %v", err)
+			log.Printf("Error calling Groq translation: %v", err)
 			return StatusChanged{status: "Failed to translate"}
 		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("Error reading translation response: %v", err)
+		translation = strings.TrimSpace(translation)
+		if translation == "" {
+			log.Printf("Groq translation returned empty result for word %s", word)
 			return StatusChanged{status: "Failed to translate"}
 		}
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("LibreTranslate error (status %d): %s", resp.StatusCode, string(body))
-			return StatusChanged{status: "Failed to translate"}
-		}
-
-		var result struct {
-			TranslatedText string `json:"translatedText"`
-		}
-		if err := json.Unmarshal(body, &result); err != nil {
-			log.Printf("Error parsing translation response: %v", err)
-			return StatusChanged{status: "Failed to translate"}
-		}
-		return TranslationReceived{Word: word, Translation: result.TranslatedText}
+		return TranslationReceived{Word: word, Translation: translation}
 	}
 }
 
@@ -687,10 +658,22 @@ var titleStyle = func() lipgloss.Style {
 }()
 
 func (m model) getFocusedWord() string {
-	rows := strings.Split(strings.TrimSpace(m.content), "\n")
-
-	row := strings.TrimSpace(rows[m.focusRow])
-	return strings.Split(row, " ")[m.focusColl]
+	wrapped := strings.TrimSpace(getWrappedContent(m.content, m.viewport.Width))
+	if wrapped == "" {
+		return ""
+	}
+	rows := strings.Split(wrapped, "\n")
+	if m.focusRow < 0 || m.focusRow >= len(rows) {
+		return ""
+	}
+	words := strings.Split(strings.TrimSpace(rows[m.focusRow]), " ")
+	if len(words) == 0 {
+		return ""
+	}
+	if m.focusColl < 0 || m.focusColl >= len(words) {
+		return ""
+	}
+	return words[m.focusColl]
 }
 
 func (m model) headerView() string {

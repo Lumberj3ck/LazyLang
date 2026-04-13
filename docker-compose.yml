@@ -12,13 +12,3 @@ services:
       - ~/.config/pulse/cookie:/root/.config/pulse/cookie
     group_add:
       - audio  
-
-  libretranslate:
-    image: libretranslate/libretranslate:latest
-    environment:
-      - LT_LOAD_ONLY=de,en
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/languages"]
-      interval: 10s
-      timeout: 5s
-      retries: 10

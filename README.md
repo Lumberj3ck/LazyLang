@@ -26,8 +26,7 @@ LazyLang solves this by putting the conversation and the dictionary in the same 
 
 ### Requirements
 
-- [Groq API key](https://console.groq.com) (for speech recognition and LLM)
-- [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) instance for word translation
+- [Groq API key](https://console.groq.com) (powers speech recognition, chat, and inline translations)
 - [Piper TTS](https://github.com/rhasspy/piper) for text-to-speech (included in Docker image)
 
 ### Running with Docker
@@ -38,9 +37,9 @@ Create a `.env` file with your `GROQ_API_KEY`, then:
 docker compose up --build
 ```
 
-This starts both the app and a LibreTranslate instance.
+This starts the app with all dependencies bundled.
 
-To run the app container directly (with an external LibreTranslate):
+To run the app container directly:
 
 ```bash
 docker build -t lazylang .
