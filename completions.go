@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/tmc/langchaingo/llms/openai"
@@ -33,12 +34,16 @@ func WithModel(model string) Option {
 
 func NewLLM(options ...Option) (*openai.LLM, error) {
 	cc := ChatCompletion{
-		url:   "https://api.groq.com/openai/v1",
+		url:   defaultCompletionBaseURL,
 		model: "openai/gpt-oss-120b",
-		token: os.Getenv("GROQ_API_KEY"),
+		token: os.Getenv(completionTokenEnvVar),
 	}
 	for _, option := range options {
 		option(&cc)
+	}
+
+	if cc.token == "" {
+		return nil, fmt.Errorf("missing completion provider token")
 	}
 
 	llm, err := openai.New(openai.WithBaseURL(cc.url), openai.WithToken(cc.token), openai.WithModel(cc.model))

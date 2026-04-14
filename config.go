@@ -13,17 +13,28 @@ import (
 	"path/filepath"
 )
 
+const (
+	completionTokenEnvVar    = "LLM_API_KEY"
+	defaultCompletionBaseURL = groqAPIBaseURL
+)
+
 // PiperTts, ElevenLabs
 type TTSBackend struct {
 	Type  string `json:"type"`
 	Voice string `json:"voice"`
 }
 
+type CompletionProvider struct {
+	BaseURL string `json:"base_url"`
+	Token   string `json:"token"`
+}
+
 type Config struct {
-	Language                  string     `json:"language"`
-	TargetTranslationLanguage string     `json:"target_translation_language"`
-	TranslationModel          string     `json:"translation_model"`
-	TTSBackend                TTSBackend `json:"tts_backend"`
+	Language                  string             `json:"language"`
+	TargetTranslationLanguage string             `json:"target_translation_language"`
+	TranslationModel          string             `json:"translation_model"`
+	TTSBackend                TTSBackend         `json:"tts_backend"`
+	CompletionProvider        CompletionProvider `json:"completion_provider"`
 	// whispercpp, hosted whispercpp
 	STTBackend STTBackend `json:"stt_backend"`
 }
@@ -49,6 +60,10 @@ func NewConfig() Config {
 		TTSBackend: TTSBackend{
 			Type:  "piper",
 			Voice: "de_DE-karlsson-low.onnx",
+		},
+		CompletionProvider: CompletionProvider{
+			BaseURL: defaultCompletionBaseURL,
+			Token:   os.Getenv(completionTokenEnvVar),
 		},
 		STTBackend: STTBackend{
 			Type:  "hosted",
@@ -91,10 +106,14 @@ func GetConfigPath() string {
 var invalidApiKey = errors.New("Invalid API key")
 var invalidSttBackend = errors.New("Invalid STT backend")
 
-func CheckHostedSTT(config Config, apiKey string) error {
+func CheckHostedSTT(config Config) error {
 	client := &http.Client{}
 
 	model := config.STTBackend.Model
+	apiKey := config.CompletionProvider.Token
+	if apiKey == "" {
+		return invalidApiKey
+	}
 	url := fmt.Sprintf("%v/models/%v", groqAPIBaseURL, model)
 	req, err := http.NewRequest("GET", url, nil)
 
@@ -130,10 +149,10 @@ func modelAvailable(url string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func isValid(config Config, apiKey string) error {
+func isValid(config Config) error {
 	switch config.STTBackend.Type {
 	case HostedSTT:
-		return CheckHostedSTT(config, apiKey)
+		return CheckHostedSTT(config)
 	case LocalSTT:
 		model := config.STTBackend.Model
 		if filepath.Ext(model) != ".bin" {
@@ -186,10 +205,18 @@ func populateDefaults(config Config) Config {
 		config.TTSBackend.Voice = voice
 		config.Language = language
 	}
+
+	if config.CompletionProvider.BaseURL == "" {
+		config.CompletionProvider.BaseURL = defaultConfig.CompletionProvider.BaseURL
+	}
+
+	if config.CompletionProvider.Token == "" {
+		config.CompletionProvider.Token = os.Getenv(completionTokenEnvVar)
+	}
 	return config
 }
 
-func GetConfig(apiKey string) (Config, error) {
+func GetConfig() (Config, error) {
 	configPath := GetConfigPath()
 	configFile, err := os.Open(configPath)
 
@@ -216,11 +243,11 @@ func GetConfig(apiKey string) (Config, error) {
 		return NewConfig(), err
 	}
 
-	err = isValid(config, apiKey)
+	config = populateDefaults(config)
+	err = isValid(config)
 	if err != nil {
 		return NewConfig(), err
 	}
 
-	config = populateDefaults(config)
 	return config, nil
 }

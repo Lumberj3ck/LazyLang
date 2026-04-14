@@ -26,12 +26,28 @@ LazyLang solves this by putting the conversation and the dictionary in the same 
 
 ### Requirements
 
-- [Groq API key](https://console.groq.com) (powers speech recognition, chat, and inline translations)
+- OpenAI-compatible API key such as [Groq](https://console.groq.com) (powers speech recognition, chat, and inline translations)
 - [Piper TTS](https://github.com/rhasspy/piper) for text-to-speech (included in Docker image)
+
+### Configuration
+
+All runtime settings live in `config.json` inside the project directory. The `completion_provider` section lets you point LazyLang at any OpenAI-style endpoint and store the auth token alongside it:
+
+```json
+{
+  "completion_provider": {
+    "base_url": "https://api.groq.com/openai/v1",
+    "token": "sk-..."
+  }
+}
+```
+
+If `completion_provider.token` is omitted, LazyLang falls back to the `LLM_API_KEY` environment variable (useful when generating the initial config automatically inside Docker).
+Both conversations and inline translations share this provider configuration, so the model endpoint only needs to be defined once.
 
 ### Running with Docker
 
-Create a `.env` file with your `GROQ_API_KEY`, then:
+Create a `.env` file with your `LLM_API_KEY`, then:
 
 ```bash
 docker compose up --build

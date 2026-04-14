@@ -50,7 +50,6 @@ type model struct {
 	content          string
 	ready            bool
 	recorder         *Recorder
-	apiKey           string
 	piperVoice       *piper.PiperVoice
 	status           string
 	focusColl        int
@@ -66,8 +65,11 @@ type model struct {
 	initialTopic     string
 }
 
-func initialModel(apiKey string, propose bool, config Config) model {
-	llm, err := NewLLM()
+func initialModel(propose bool, config Config) model {
+	llm, err := NewLLM(
+		WithBaseURL(config.CompletionProvider.BaseURL),
+		WithToken(config.CompletionProvider.Token),
+	)
 	if err != nil {
 		fmt.Printf("Error creating LLM: %v\n", err)
 		os.Exit(1)
@@ -117,7 +119,7 @@ func initialModel(apiKey string, propose bool, config Config) model {
 	var transcriber transriber.Transcriber
 	switch config.STTBackend.Type {
 	case HostedSTT:
-		transcriber = transriber.NewGroqTranscriber(config.STTBackend.Model, apiKey, config.Language)
+		transcriber = transriber.NewGroqTranscriber(config.STTBackend.Model, config.CompletionProvider.Token, config.Language)
 	case LocalSTT:
 		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model, config.Language)
 	default:
@@ -134,7 +136,6 @@ func initialModel(apiKey string, propose bool, config Config) model {
 		chats:        l,
 		llmChain:     llmChain,
 		recorder:     NewRecorder(),
-		apiKey:       apiKey,
 		status:       "Ready",
 		piperVoice:   piperVoice,
 		wordsStore:   NewWordsStore(),
@@ -236,7 +237,11 @@ func GetTranslation(word string, m model) tea.Cmd {
 		if translation, ok := m.wordsStore.Get(lower); ok {
 			return TranslationReceived{Word: lower, Translation: translation}
 		}
-		translator, err := NewLLM(WithModel(m.config.TranslationModel))
+		translator, err := NewLLM(
+			WithBaseURL(m.config.CompletionProvider.BaseURL),
+			WithToken(m.config.CompletionProvider.Token),
+			WithModel(m.config.TranslationModel),
+		)
 		if err != nil {
 			log.Printf("Error creating translation model: %v", err)
 			return StatusChanged{status: "Failed to translate"}
@@ -727,23 +732,22 @@ func (m model) View() string {
 }
 
 func main() {
-	apiKey := os.Getenv("GROQ_API_KEY")
-	if apiKey == "" {
-		fmt.Println("Error: GROQ_API_KEY environment variable not set")
-		os.Exit(1)
-	}
-
-	config, err := GetConfig(apiKey)
+	config, err := GetConfig()
 
 	if err != nil {
 		log.Fatalf("Error parsing config: %v", err)
+	}
+
+	if config.CompletionProvider.Token == "" {
+		fmt.Printf("Error: missing completion_provider.token in %s or %s environment variable\n", GetConfigPath(), completionTokenEnvVar)
+		os.Exit(1)
 	}
 
 	proposeTopic := flag.Bool("propose", false, "When this flag is specified conversation topic will be proposed")
 	flag.Parse()
 
 	p := tea.NewProgram(
-		initialModel(apiKey, *proposeTopic, config),
+		initialModel(*proposeTopic, config),
 		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 	)
