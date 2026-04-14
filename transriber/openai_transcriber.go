@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 // WAV header constants
@@ -17,28 +18,28 @@ const (
 	Channels      = 1
 )
 
-var groqAudioAPIURL = "https://api.groq.com/openai/v1/audio/transcriptions"
-
-type GroqTranscriptionResponse struct {
+type openAITranscriptionResponse struct {
 	Text string `json:"text"`
 }
 
-type GroqTranscriber struct {
-	apiKey   string
+type OpenAITranscriber struct {
+	token    string
 	language string
 	model    string
+	baseURL  string
 }
 
-func NewGroqTranscriber(model string, apiKey string, language string) *GroqTranscriber {
-	return &GroqTranscriber{
-		apiKey:   apiKey,
+func NewOpenAITranscriber(baseURL string, token string, model string, language string) *OpenAITranscriber {
+	return &OpenAITranscriber{
+		token:    token,
 		language: language,
 		model:    model,
+		baseURL:  strings.TrimRight(baseURL, "/"),
 	}
 }
 
-// transcribeWithGroq sends audio to Groq API for transcription
-func (m GroqTranscriber) Transcribe(audioData []int16) (string, error) {
+// Transcribe sends audio to an OpenAI-compatible API for transcription
+func (m OpenAITranscriber) Transcribe(audioData []int16) (string, error) {
 	audioWav := samplesToWAV(audioData, SampleRate, Channels)
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
@@ -77,12 +78,15 @@ func (m GroqTranscriber) Transcribe(audioData []int16) (string, error) {
 	}
 
 	// Create request
-	req, err := http.NewRequest("POST", groqAudioAPIURL, &requestBody)
+	url := fmt.Sprintf("%s/audio/transcriptions", m.baseURL)
+	req, err := http.NewRequest("POST", url, &requestBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+m.apiKey)
+	if m.token != "" {
+		req.Header.Set("Authorization", "Bearer "+m.token)
+	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	// Send request
@@ -102,7 +106,7 @@ func (m GroqTranscriber) Transcribe(audioData []int16) (string, error) {
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	var transcriptionResp GroqTranscriptionResponse
+	var transcriptionResp openAITranscriptionResponse
 	err = json.Unmarshal(body, &transcriptionResp)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)

@@ -37,13 +37,16 @@ All runtime settings live in `config.json` inside the project directory. The `co
 {
   "completion_provider": {
     "base_url": "https://api.groq.com/openai/v1",
-    "token": "sk-..."
+    "token": "sk-...",
+    "model": "openai/gpt-oss-120b"
   }
 }
 ```
 
-If `completion_provider.token` is omitted, LazyLang falls back to the `LLM_API_KEY` environment variable (useful when generating the initial config automatically inside Docker).
-Both conversations and inline translations share this provider configuration, so the model endpoint only needs to be defined once.
+The `base_url` and `model` values are mandatory; LazyLang refuses to start until they are provided. If `completion_provider.token` is omitted, LazyLang falls back to the `LLM_API_KEY` environment variable (useful when generating the initial config automatically inside Docker).
+Both conversations and inline translations share this provider configuration, so the model endpoint only needs to be defined once. When `base_url` points to a localhost or private-network address (perfect for Ollama), tokens are optional; any public endpoint still requires a token.
+
+Set `stt_backend.type` to `local` to run Whisper.cpp on-device. In that mode LazyLang ignores API tokens and uses the bundled downloader to fetch the requested `.bin` model from Hugging Face automatically. When `type` is `hosted`, LazyLang defaults to the same `completion_provider.base_url`/token; you can override the endpoint with `stt_backend.url` and a matching `stt_backend.token` when the STT service lives elsewhere.
 
 ### Running with Docker
 

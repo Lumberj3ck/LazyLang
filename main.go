@@ -29,12 +29,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const (
-	groqAPIBaseURL = "https://api.groq.com/openai/v1"
-)
-
-var groqAudioAPIURL = fmt.Sprintf("%v/audio/transcriptions", groqAPIBaseURL)
-
 // var docStyle = lipgloss.NewStyle().Margin(1, 2)
 const (
 	scrolloff = 2
@@ -69,6 +63,7 @@ func initialModel(propose bool, config Config) model {
 	llm, err := NewLLM(
 		WithBaseURL(config.CompletionProvider.BaseURL),
 		WithToken(config.CompletionProvider.Token),
+		WithModel(config.CompletionProvider.Model),
 	)
 	if err != nil {
 		fmt.Printf("Error creating LLM: %v\n", err)
@@ -119,7 +114,9 @@ func initialModel(propose bool, config Config) model {
 	var transcriber transriber.Transcriber
 	switch config.STTBackend.Type {
 	case HostedSTT:
-		transcriber = transriber.NewGroqTranscriber(config.STTBackend.Model, config.CompletionProvider.Token, config.Language)
+		sttBaseURL := resolveHostedSTTBaseURL(config)
+		sttToken := resolveHostedSTTToken(config)
+		transcriber = transriber.NewOpenAITranscriber(sttBaseURL, sttToken, config.STTBackend.Model, config.Language)
 	case LocalSTT:
 		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model, config.Language)
 	default:
@@ -240,7 +237,7 @@ func GetTranslation(word string, m model) tea.Cmd {
 		translator, err := NewLLM(
 			WithBaseURL(m.config.CompletionProvider.BaseURL),
 			WithToken(m.config.CompletionProvider.Token),
-			WithModel(m.config.TranslationModel),
+			WithModel(m.config.CompletionProvider.Model),
 		)
 		if err != nil {
 			log.Printf("Error creating translation model: %v", err)
@@ -249,12 +246,12 @@ func GetTranslation(word string, m model) tea.Cmd {
 		prompt := fmt.Sprintf("Translate the single word '%s' from %s to %s. Respond only with the translation.", word, m.config.Language, m.config.TargetTranslationLanguage)
 		translation, err := llms.GenerateFromSinglePrompt(context.Background(), translator, prompt, llms.WithTemperature(0))
 		if err != nil {
-			log.Printf("Error calling Groq translation: %v", err)
+			log.Printf("Error calling translation provider: %v", err)
 			return StatusChanged{status: "Failed to translate"}
 		}
 		translation = strings.TrimSpace(translation)
 		if translation == "" {
-			log.Printf("Groq translation returned empty result for word %s", word)
+			log.Printf("Translation provider returned empty result for word %s", word)
 			return StatusChanged{status: "Failed to translate"}
 		}
 		return TranslationReceived{Word: lower, Translation: translation}
@@ -736,11 +733,6 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("Error parsing config: %v", err)
-	}
-
-	if config.CompletionProvider.Token == "" {
-		fmt.Printf("Error: missing completion_provider.token in %s or %s environment variable\n", GetConfigPath(), completionTokenEnvVar)
-		os.Exit(1)
 	}
 
 	proposeTopic := flag.Bool("propose", false, "When this flag is specified conversation topic will be proposed")

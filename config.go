@@ -8,15 +8,15 @@ import (
 	"lazylang/piper"
 	"lazylang/utils"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-const (
-	completionTokenEnvVar    = "LLM_API_KEY"
-	defaultCompletionBaseURL = groqAPIBaseURL
-)
+const completionTokenEnvVar = "LLM_API_KEY"
 
 // PiperTts, ElevenLabs
 type TTSBackend struct {
@@ -27,12 +27,12 @@ type TTSBackend struct {
 type CompletionProvider struct {
 	BaseURL string `json:"base_url"`
 	Token   string `json:"token"`
+	Model   string `json:"model"`
 }
 
 type Config struct {
 	Language                  string             `json:"language"`
 	TargetTranslationLanguage string             `json:"target_translation_language"`
-	TranslationModel          string             `json:"translation_model"`
 	TTSBackend                TTSBackend         `json:"tts_backend"`
 	CompletionProvider        CompletionProvider `json:"completion_provider"`
 	// whispercpp, hosted whispercpp
@@ -50,24 +50,28 @@ type STTBackend struct {
 	// hosted, local
 	Type  STTType `json:"type"`
 	Model string  `json:"model"`
+	URL   string  `json:"url,omitempty"`
+	Token string  `json:"token,omitempty"`
 }
 
 func NewConfig() Config {
 	return Config{
 		Language:                  "de",
 		TargetTranslationLanguage: "en",
-		TranslationModel:          "openai/gpt-oss-120b",
 		TTSBackend: TTSBackend{
 			Type:  "piper",
 			Voice: "de_DE-karlsson-low.onnx",
 		},
 		CompletionProvider: CompletionProvider{
-			BaseURL: defaultCompletionBaseURL,
+			BaseURL: "",
 			Token:   os.Getenv(completionTokenEnvVar),
+			Model:   "",
 		},
 		STTBackend: STTBackend{
 			Type:  "hosted",
 			Model: "whisper-large-v3",
+			URL:   "",
+			Token: "",
 		},
 	}
 }
@@ -106,15 +110,15 @@ func GetConfigPath() string {
 var invalidApiKey = errors.New("Invalid API key")
 var invalidSttBackend = errors.New("Invalid STT backend")
 
-func CheckHostedSTT(config Config) error {
+func CheckHostedSTT(config Config, baseURL string, apiKey string) error {
 	client := &http.Client{}
 
 	model := config.STTBackend.Model
-	apiKey := config.CompletionProvider.Token
 	if apiKey == "" {
 		return invalidApiKey
 	}
-	url := fmt.Sprintf("%v/models/%v", groqAPIBaseURL, model)
+	base := strings.TrimRight(baseURL, "/")
+	url := fmt.Sprintf("%v/models/%v", base, model)
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {
@@ -152,7 +156,18 @@ func modelAvailable(url string) bool {
 func isValid(config Config) error {
 	switch config.STTBackend.Type {
 	case HostedSTT:
-		return CheckHostedSTT(config)
+		baseURL := resolveHostedSTTBaseURL(config)
+		if baseURL == "" {
+			return errors.New("hosted STT requires a base URL")
+		}
+		if config.STTBackend.URL != "" && config.STTBackend.Token == "" {
+			return errors.New("stt_backend.token is required when stt_backend.url is set")
+		}
+		token := resolveHostedSTTToken(config)
+		if token == "" {
+			return invalidApiKey
+		}
+		return CheckHostedSTT(config, baseURL, token)
 	case LocalSTT:
 		model := config.STTBackend.Model
 		if filepath.Ext(model) != ".bin" {
@@ -192,10 +207,6 @@ func resolvePiperVoice(language string, defaultConfig Config) (string, string) {
 func populateDefaults(config Config) Config {
 	defaultConfig := NewConfig()
 
-	if config.TranslationModel == "" {
-		config.TranslationModel = defaultConfig.TranslationModel
-	}
-
 	if config.TTSBackend.Type == "" {
 		config.TTSBackend.Type = defaultConfig.TTSBackend.Type
 	}
@@ -206,14 +217,57 @@ func populateDefaults(config Config) Config {
 		config.Language = language
 	}
 
-	if config.CompletionProvider.BaseURL == "" {
-		config.CompletionProvider.BaseURL = defaultConfig.CompletionProvider.BaseURL
-	}
-
 	if config.CompletionProvider.Token == "" {
 		config.CompletionProvider.Token = os.Getenv(completionTokenEnvVar)
 	}
 	return config
+}
+
+func baseURLRequiresToken(baseURL string) bool {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return true
+	}
+	host := u.Hostname()
+	if host == "" {
+		return true
+	}
+	if strings.EqualFold(host, "localhost") {
+		return false
+	}
+	if strings.HasSuffix(strings.ToLower(host), ".local") || strings.HasSuffix(strings.ToLower(host), ".lan") {
+		return false
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return true
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return false
+	}
+	return true
+}
+
+func completionTokenRequired(baseURL, token string) bool {
+	if token != "" {
+		return false
+	}
+	return baseURLRequiresToken(baseURL)
+}
+
+func resolveHostedSTTBaseURL(config Config) string {
+	base := config.STTBackend.URL
+	if base == "" {
+		base = config.CompletionProvider.BaseURL
+	}
+	return strings.TrimRight(base, "/")
+}
+
+func resolveHostedSTTToken(config Config) string {
+	if config.STTBackend.Token != "" {
+		return config.STTBackend.Token
+	}
+	return config.CompletionProvider.Token
 }
 
 func GetConfig() (Config, error) {
@@ -221,11 +275,11 @@ func GetConfig() (Config, error) {
 	configFile, err := os.Open(configPath)
 
 	if errors.Is(err, os.ErrNotExist) {
-		c, err := CreateDefaultConfig()
+		_, err := CreateDefaultConfig()
 		if err != nil {
 			return NewConfig(), err
 		}
-		return c, nil
+		return GetConfig()
 	}
 
 	if err != nil {
@@ -244,6 +298,15 @@ func GetConfig() (Config, error) {
 	}
 
 	config = populateDefaults(config)
+	if config.CompletionProvider.BaseURL == "" {
+		return NewConfig(), fmt.Errorf("completion provider base_url is required in %s", configPath)
+	}
+	if config.CompletionProvider.Model == "" {
+		return NewConfig(), fmt.Errorf("completion provider model is required in %s", configPath)
+	}
+	if completionTokenRequired(config.CompletionProvider.BaseURL, config.CompletionProvider.Token) {
+		return NewConfig(), fmt.Errorf("completion provider token required for %s", config.CompletionProvider.BaseURL)
+	}
 	err = isValid(config)
 	if err != nil {
 		return NewConfig(), err

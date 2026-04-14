@@ -34,19 +34,31 @@ func WithModel(model string) Option {
 
 func NewLLM(options ...Option) (*openai.LLM, error) {
 	cc := ChatCompletion{
-		url:   defaultCompletionBaseURL,
-		model: "openai/gpt-oss-120b",
 		token: os.Getenv(completionTokenEnvVar),
 	}
 	for _, option := range options {
 		option(&cc)
 	}
 
-	if cc.token == "" {
+	if cc.url == "" {
+		return nil, fmt.Errorf("missing completion provider base URL")
+	}
+	if cc.model == "" {
+		return nil, fmt.Errorf("missing completion provider model")
+	}
+	if completionTokenRequired(cc.url, cc.token) {
 		return nil, fmt.Errorf("missing completion provider token")
 	}
 
-	llm, err := openai.New(openai.WithBaseURL(cc.url), openai.WithToken(cc.token), openai.WithModel(cc.model))
+	opts := []openai.Option{
+		openai.WithBaseURL(cc.url),
+		openai.WithModel(cc.model),
+	}
+	if cc.token != "" {
+		opts = append(opts, openai.WithToken(cc.token))
+	}
+
+	llm, err := openai.New(opts...)
 
 	if err != nil {
 		return llm, err
