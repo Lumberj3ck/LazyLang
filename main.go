@@ -45,7 +45,7 @@ var isAlpha = regexp.MustCompile(`[\p{L}]+`)
 type model struct {
 	DB               *sql.DB
 	chats            list.Model
-	llmChain         *chains.LLMChain
+	llmChain         *ChatLLMChain
 	viewport         viewport.Model
 	content          string
 	ready            bool
@@ -73,21 +73,14 @@ func initialModel(apiKey string, propose bool, config Config) model {
 		os.Exit(1)
 	}
 
-	prompt := prompts.NewPromptTemplate(
-		fmt.Sprintf(` You are a %s teacher. Respond to the following question or statement in
-  %s.
+	systemMsg := fmt.Sprintf("You are a %s teacher. Respond to the following question or statement in %s. Important: only give short answers to the questions!", config.Language, config.Language)
+	prompt := prompts.NewChatPromptTemplate([]prompts.MessageFormatter{
+		prompts.NewSystemMessagePromptTemplate(systemMsg, nil),
+		prompts.MessagesPlaceholder{VariableName: "history"},
+		prompts.NewHumanMessagePromptTemplate("{{.text}}", []string{"text"}),
+	})
 
-  Previous conversation history:
-  {{.history}}
-
-  Important: only give short answers to the questions!
-  Student: {{.text}}
-  Teacher:
-  `, config.Language, config.Language),
-		[]string{"history", "text"},
-	)
-
-	llmChain := chains.NewLLMChain(llm, prompt)
+	llmChain := NewChatLLMChain(llm, prompt)
 	DefaultSchema := []byte(lazy_db.DefaultSchema)
 
 	persistedHistory := sqlite3.NewSqliteChatMessageHistory(sqlite3.WithDBAddress("chats.db"), sqlite3.WithSchema(DefaultSchema))
@@ -115,7 +108,10 @@ func initialModel(apiKey string, propose bool, config Config) model {
 		}
 	}
 
-	llmChain.Memory = memory.NewConversationBuffer(memory.WithChatHistory(persistedHistory))
+	llmChain.Memory = memory.NewConversationBuffer(
+		memory.WithChatHistory(persistedHistory),
+		memory.WithReturnMessages(true),
+	)
 	piperVoice := piper.NewPiperVoice(piper.WithModel(config.TTSBackend.Voice), piper.WithLanguage(config.Language))
 
 	var transcriber transriber.Transcriber
@@ -173,6 +169,7 @@ func GetLlmCompletion(text string, m model) tea.Cmd {
 	return func() tea.Msg {
 		output, err := chains.Call(context.Background(), m.llmChain, map[string]any{"text": text})
 		if err != nil {
+			log.Println(err)
 			return StatusChanged{status: "Failed get completion"}
 		}
 		if output["text"] == nil {
@@ -237,7 +234,7 @@ func GetTranslation(word string, m model) tea.Cmd {
 	return func() tea.Msg {
 		lower := strings.ToLower(word)
 		if translation, ok := m.wordsStore.Get(lower); ok {
-			return TranslationReceived{Word: word, Translation: translation}
+			return TranslationReceived{Word: lower, Translation: translation}
 		}
 		translator, err := NewLLM(WithModel(m.config.TranslationModel))
 		if err != nil {
@@ -255,7 +252,7 @@ func GetTranslation(word string, m model) tea.Cmd {
 			log.Printf("Groq translation returned empty result for word %s", word)
 			return StatusChanged{status: "Failed to translate"}
 		}
-		return TranslationReceived{Word: word, Translation: translation}
+		return TranslationReceived{Word: lower, Translation: translation}
 	}
 }
 
@@ -409,7 +406,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, GetLlmCompletion(msg.transcription, m)
 
 	case TranslationReceived:
-		m.wordsStore.Add(strings.ToLower(msg.Word), msg.Translation)
+		m.wordsStore.Add(msg.Word, msg.Translation)
 
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
@@ -439,7 +436,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.content += fmt.Sprintf("You: %s \n", msg.GetContent())
 					}
 				}
-				m.llmChain.Memory = memory.NewConversationBuffer(memory.WithChatHistory(persistendHistory))
+				m.llmChain.Memory = memory.NewConversationBuffer(
+					memory.WithChatHistory(persistendHistory),
+					memory.WithReturnMessages(true),
+				)
 
 				m.DB.Close()
 				m.DB = persistendHistory.DB
