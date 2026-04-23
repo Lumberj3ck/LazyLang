@@ -13,10 +13,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
-
-const completionTokenEnvVar = "LLM_API_KEY"
 
 // PiperTts, ElevenLabs
 type TTSBackend struct {
@@ -24,17 +23,21 @@ type TTSBackend struct {
 	Voice string `json:"voice"`
 }
 
-type CompletionProvider struct {
+type Provider struct {
 	BaseURL string `json:"base_url"`
 	Token   string `json:"token"`
 	Model   string `json:"model"`
 }
 
+type Providers map[string]Provider
+
 type Config struct {
-	Language                  string             `json:"language"`
-	TargetTranslationLanguage string             `json:"target_translation_language"`
-	TTSBackend                TTSBackend         `json:"tts_backend"`
-	CompletionProvider        CompletionProvider `json:"completion_provider"`
+	Providers                 `json:"providers"`
+	Language                  string     `json:"language"`
+	TargetTranslationLanguage string     `json:"target_translation_language"`
+	TTSBackend                TTSBackend `json:"tts_backend"`
+	// Key into `providers` selecting the LLM provider to use.
+	CompletionProvider string `json:"completion_provider"`
 	// whispercpp, hosted whispercpp
 	STTBackend STTBackend `json:"stt_backend"`
 }
@@ -62,17 +65,9 @@ func NewConfig() Config {
 			Type:  "piper",
 			Voice: "de_DE-karlsson-low.onnx",
 		},
-		CompletionProvider: CompletionProvider{
-			BaseURL: "",
-			Token:   os.Getenv(completionTokenEnvVar),
-			Model:   "",
-		},
-		STTBackend: STTBackend{
-			Type:  "hosted",
-			Model: "whisper-large-v3",
-			URL:   "",
-			Token: "",
-		},
+		Providers: map[string]Provider{},
+		CompletionProvider: "",
+		STTBackend: STTBackend{},
 	}
 }
 
@@ -153,7 +148,7 @@ func modelAvailable(url string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func isValid(config Config) error {
+func isSTTValid(config Config) error {
 	switch config.STTBackend.Type {
 	case HostedSTT:
 		baseURL := resolveHostedSTTBaseURL(config)
@@ -204,23 +199,27 @@ func resolvePiperVoice(language string, defaultConfig Config) (string, string) {
 	return v + ".onnx", language
 }
 
-func populateDefaults(config Config) Config {
-	defaultConfig := NewConfig()
-
-	if config.TTSBackend.Type == "" {
-		config.TTSBackend.Type = defaultConfig.TTSBackend.Type
+func resolveCompletionProvider(config Config) (Provider, error) {
+	name := strings.TrimSpace(config.CompletionProvider)
+	if name == "" {
+		return Provider{}, fmt.Errorf("Completion provider is required")
 	}
-
-	if config.TTSBackend.Type == "piper" && config.TTSBackend.Voice == "" {
-		voice, language := resolvePiperVoice(config.Language, defaultConfig)
-		config.TTSBackend.Voice = voice
-		config.Language = language
+	if config.Providers == nil {
+		return Provider{}, fmt.Errorf("providers is required")
 	}
-
-	if config.CompletionProvider.Token == "" {
-		config.CompletionProvider.Token = os.Getenv(completionTokenEnvVar)
+	p, ok := config.Providers[name]
+	if !ok {
+		keys := make([]string, 0, len(config.Providers))
+		for key, _ := range config.Providers{
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		return Provider{}, fmt.Errorf("completion provider %q not valid provider; available providers: %s.", name, strings.Join(keys, ", "))
 	}
-	return config
+	if p.Token == "" {
+		return Provider{}, fmt.Errorf("Token missing for the %s provider", name)
+	}
+	return p, nil
 }
 
 func baseURLRequiresToken(baseURL string) bool {
@@ -258,7 +257,9 @@ func completionTokenRequired(baseURL, token string) bool {
 func resolveHostedSTTBaseURL(config Config) string {
 	base := config.STTBackend.URL
 	if base == "" {
-		base = config.CompletionProvider.BaseURL
+		if p, err := resolveCompletionProvider(config); err == nil {
+			base = p.BaseURL
+		}
 	}
 	return strings.TrimRight(base, "/")
 }
@@ -267,25 +268,20 @@ func resolveHostedSTTToken(config Config) string {
 	if config.STTBackend.Token != "" {
 		return config.STTBackend.Token
 	}
-	return config.CompletionProvider.Token
+	if p, err := resolveCompletionProvider(config); err == nil {
+		return p.Token
+	}
+	return ""
 }
 
 func GetConfig() (Config, error) {
 	configPath := GetConfigPath()
 	configFile, err := os.Open(configPath)
 
-	if errors.Is(err, os.ErrNotExist) {
-		_, err := CreateDefaultConfig()
-		if err != nil {
-			return NewConfig(), err
-		}
-		return GetConfig()
-	}
-
 	if err != nil {
 		return NewConfig(), err
 	}
-
+	// imediately after Open succeded
 	defer configFile.Close()
 
 	byteValue, _ := io.ReadAll(configFile)
@@ -297,17 +293,20 @@ func GetConfig() (Config, error) {
 		return NewConfig(), err
 	}
 
-	config = populateDefaults(config)
-	if config.CompletionProvider.BaseURL == "" {
+	completionProvider, err := resolveCompletionProvider(config)
+	if err != nil {
+		return NewConfig(), fmt.Errorf("%s: %w", configPath, err)
+	}
+	if completionProvider.BaseURL == "" {
 		return NewConfig(), fmt.Errorf("completion provider base_url is required in %s", configPath)
 	}
-	if config.CompletionProvider.Model == "" {
+	if completionProvider.Model == "" {
 		return NewConfig(), fmt.Errorf("completion provider model is required in %s", configPath)
 	}
-	if completionTokenRequired(config.CompletionProvider.BaseURL, config.CompletionProvider.Token) {
-		return NewConfig(), fmt.Errorf("completion provider token required for %s", config.CompletionProvider.BaseURL)
+	if completionTokenRequired(completionProvider.BaseURL, completionProvider.Token) {
+		return NewConfig(), fmt.Errorf("completion provider token required for %s", completionProvider.BaseURL)
 	}
-	err = isValid(config)
+	err = isSTTValid(config)
 	if err != nil {
 		return NewConfig(), err
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/tmc/langchaingo/llms/openai"
 )
@@ -33,11 +32,12 @@ func WithModel(model string) Option {
 }
 
 func NewLLM(options ...Option) (*openai.LLM, error) {
-	cc := ChatCompletion{
-		token: os.Getenv(completionTokenEnvVar),
-	}
+	cc := ChatCompletion{}
 	for _, option := range options {
 		option(&cc)
+	}
+	if cc.token == "" {
+		return nil, fmt.Errorf("missing completion provider token")
 	}
 
 	if cc.url == "" {

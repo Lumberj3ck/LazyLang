@@ -60,10 +60,15 @@ type model struct {
 }
 
 func initialModel(propose bool, config Config) model {
+	completionProvider, err := resolveCompletionProvider(config)
+	if err != nil {
+		log.Printf("Error loading completion provider: %v\n", err)
+		os.Exit(1)
+	}
 	llm, err := NewLLM(
-		WithBaseURL(config.CompletionProvider.BaseURL),
-		WithToken(config.CompletionProvider.Token),
-		WithModel(config.CompletionProvider.Model),
+		WithBaseURL(completionProvider.BaseURL),
+		WithToken(completionProvider.Token),
+		WithModel(completionProvider.Model),
 	)
 	if err != nil {
 		fmt.Printf("Error creating LLM: %v\n", err)
@@ -234,10 +239,15 @@ func GetTranslation(word string, m model) tea.Cmd {
 		if translation, ok := m.wordsStore.Get(lower); ok {
 			return TranslationReceived{Word: lower, Translation: translation}
 		}
+		completionProvider, err := resolveCompletionProvider(m.config)
+		if err != nil {
+			log.Printf("Error loading completion provider: %v", err)
+			return StatusChanged{status: "Failed to translate"}
+		}
 		translator, err := NewLLM(
-			WithBaseURL(m.config.CompletionProvider.BaseURL),
-			WithToken(m.config.CompletionProvider.Token),
-			WithModel(m.config.CompletionProvider.Model),
+			WithBaseURL(completionProvider.BaseURL),
+			WithToken(completionProvider.Token),
+			WithModel(completionProvider.Model),
 		)
 		if err != nil {
 			log.Printf("Error creating translation model: %v", err)
@@ -729,13 +739,49 @@ func (m model) View() string {
 }
 
 func main() {
-	config, err := GetConfig()
 
+	f, err := tea.LogToFile("tea.log", "")
 	if err != nil {
-		log.Fatalf("Error parsing config: %v", err)
+		fmt.Println("could not run program:", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	config, err := GetConfig()
+	if err != nil {
+		log.Printf("Error parsing config: %v", err)
+		sp := tea.NewProgram(
+			initialWizard(&config),
+			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
+			tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
+		)
+		_, err := sp.Run()
+
+		if err != nil {
+			fmt.Println("could not run setup wizard:", err)
+			os.Exit(1)
+		}
 	}
 
 	proposeTopic := flag.Bool("propose", false, "When this flag is specified conversation topic will be proposed")
+
+	// setupWizard := flag.Bool("setup", false, "Setup wizard")
+	// Load existing config and show what is configured
+
+	// Select Completion Provider
+	//     	Openai
+	//     	Groq
+	//     	Ollama (default localhost:11434)
+	//		Please provide openai style Completion url
+	// 		Skip (here check if completion provider is already present) if not exit 
+	//   	And everytime we don't have anything, we just try to redirect to the Setup Wizard
+	//
+	// Select STT Provider 
+	// 		Openai
+	// 		Groq
+	// 		Run local
+	// 		Skip (Same check If we already have STT, otherwise exit and on new start redirect here)
+	// Select TTS 
 	flag.Parse()
 
 	p := tea.NewProgram(
@@ -743,12 +789,6 @@ func main() {
 		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 	)
-	f, err := tea.LogToFile("tea.log", "")
-	if err != nil {
-		fmt.Println("could not run program:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
 
 	m, err := p.Run()
 	my := m.(model)
