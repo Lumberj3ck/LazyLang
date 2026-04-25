@@ -3,3 +3,4 @@ lazylang
 todo.md
 .env
 *.db
+env-activate.sh

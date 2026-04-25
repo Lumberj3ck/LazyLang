@@ -751,7 +751,7 @@ func main() {
 	if err != nil {
 		log.Printf("Error parsing config: %v", err)
 		sp := tea.NewProgram(
-			initialWizard(&config),
+			NewWizard(&config),
 			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 			tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 		)

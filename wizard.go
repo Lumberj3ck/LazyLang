@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 type Stage int
@@ -17,14 +19,26 @@ const (
 
 type wizardModel struct {
 	c                  *Config
+	showOverlay        bool
+	overlay 		   overlayModel
 	stage              Stage
 	currRow            int
 	availableProviders []string
+	width int
+	height int
 }
 
-func initialWizard(c *Config) wizardModel {
-	log.Println(c)
-	return wizardModel{c, adjustProvider, 0, []string{"OpenAI", "Groq", "Ollama", "Custom openai style endpoint"}}
+var dim = lipgloss.NewStyle().Faint(true)
+
+func NewWizard(c *Config) wizardModel {
+	return wizardModel{
+		c: c, 
+		overlay: NewOverlay(),
+		showOverlay: false, 
+		stage: adjustProvider,
+		currRow: 0, 
+		availableProviders: []string{"OpenAI", "Groq", "Ollama", "Custom openai style endpoint"},
+	}
 }
 
 func (m wizardModel) Init() tea.Cmd {
@@ -32,20 +46,37 @@ func (m wizardModel) Init() tea.Cmd {
 }
 
 func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.width = msg.Width
+
+		m.overlay.SetHeight(m.height / 2)
+		m.overlay.SetWidth(m.width / 2)
 	case tea.KeyMsg:
 		switch k := msg.String(); k {
 		case "j", "down":
+			if m.showOverlay {
+				break
+			}
 			log.Println(m.currRow)
 			if m.stage == adjustProvider{
 				m.currRow = min(len(m.availableProviders)-1, m.currRow+1)
 			}
 		case "k", "up":
+			if m.showOverlay {
+				break
+			}
 			m.currRow = max(0, m.currRow-1)
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "ctrl+p":
+			m.showOverlay = !m.showOverlay
 		}
 	}
+	
+	m.overlay, cmd = m.overlay.Update(msg)
 	// case tea.WindowSizeMsg:
 	// if !m.ready {
 	// m.ready = true
@@ -56,7 +87,26 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// }
 	// Keep the existing model state; returning a zero-value model
 	// would drop the config pointer and later dereference nil in View().
-	return m, nil
+	return m, cmd
+}
+
+func overlayAt(bg, fg string, x, y int) string{
+	bgLines := strings.Split(bg, "\n")
+	fgLines := strings.Split(fg, "\n")
+
+	for i, line := range fgLines{
+		by := y + i
+		if by < 0 || by >= len(bgLines){
+			continue
+		}
+
+		bgLine := bgLines[by]
+		end := x + ansi.StringWidth(line)
+		left := ansi.Cut(bgLine, 0, x)
+		right := ansi.Cut(bgLine, end, ansi.StringWidth(bgLine))
+		bgLines[by] = left + line + right
+	}
+	return strings.Join(bgLines, "\n")
 }
 
 func (m wizardModel) View() string {
@@ -77,7 +127,7 @@ func (m wizardModel) View() string {
 	var view strings.Builder
 	switch m.stage {
 	case adjustProvider:
-		if m.currRow > len(m.availableProviders) || m.currRow < 0 {
+		if m.currRow >= len(m.availableProviders) || m.currRow < 0 {
 			m.currRow = 0
 		}
 
@@ -89,5 +139,18 @@ func (m wizardModel) View() string {
 			}
 		}
 	}
-	return view.String()
+	base := view.String()
+	if m.showOverlay{
+		// Overlay math assumes a fixed-size background canvas.
+		if m.width > 0 && m.height > 0 {
+			base = lipgloss.NewStyle().Width(m.width).Height(m.height).Render(base)
+		}
+
+		overlayBox := m.overlay.View()
+		x := m.width / 2 - lipgloss.Width(overlayBox) / 2
+		y := m.height / 2 - lipgloss.Height(overlayBox) / 2
+		faintBase := dim.Render(base)
+		return overlayAt(faintBase, overlayBox, x, y)
+	}
+	return base
 }
