@@ -11,13 +11,14 @@ import (
 	"github.com/tmc/langchaingo/memory/sqlite3"
 )
 
-type Chat struct{
-	id int
-	name string
+type Chat struct {
+	id      int
+	name    string
 	created time.Time
 }
+
 func (c Chat) Title() string       { return c.name }
-func (c Chat) GetId() int { return c.id }
+func (c Chat) GetId() int          { return c.id }
 func (c Chat) Description() string { return c.created.String() }
 func (c Chat) FilterValue() string { return c.name }
 
@@ -44,7 +45,7 @@ func GetActiveChats(db *sql.DB) ([]Chat, error) {
 	JOIN %s lm 
 	On ls.id = lm.session;`, DefaultChatTableName, sqlite3.DefaultTableName)
 	res, err := db.Query(query)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -59,7 +60,7 @@ func GetActiveChats(db *sql.DB) ([]Chat, error) {
 			return nil, err
 		}
 		cr, err := time.Parse("2006-01-02T15:04:05Z", created)
-		if err != nil{
+		if err != nil {
 			log.Printf("Couldn't parse date of session with id %d: %v", id, err)
 			continue
 		}

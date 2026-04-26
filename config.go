@@ -65,9 +65,9 @@ func NewConfig() Config {
 			Type:  "piper",
 			Voice: "de_DE-karlsson-low.onnx",
 		},
-		Providers: map[string]Provider{},
+		Providers:          map[string]Provider{},
 		CompletionProvider: "",
-		STTBackend: STTBackend{},
+		STTBackend:         STTBackend{},
 	}
 }
 
@@ -210,7 +210,7 @@ func resolveCompletionProvider(config Config) (Provider, error) {
 	p, ok := config.Providers[name]
 	if !ok {
 		keys := make([]string, 0, len(config.Providers))
-		for key, _ := range config.Providers{
+		for key, _ := range config.Providers {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)

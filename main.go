@@ -773,15 +773,15 @@ func main() {
 	//     	Groq
 	//     	Ollama (default localhost:11434)
 	//		Please provide openai style Completion url
-	// 		Skip (here check if completion provider is already present) if not exit 
+	// 		Skip (here check if completion provider is already present) if not exit
 	//   	And everytime we don't have anything, we just try to redirect to the Setup Wizard
 	//
-	// Select STT Provider 
+	// Select STT Provider
 	// 		Openai
 	// 		Groq
 	// 		Run local
 	// 		Skip (Same check If we already have STT, otherwise exit and on new start redirect here)
-	// Select TTS 
+	// Select TTS
 	flag.Parse()
 
 	p := tea.NewProgram(

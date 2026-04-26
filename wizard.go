@@ -20,23 +20,23 @@ const (
 type wizardModel struct {
 	c                  *Config
 	showOverlay        bool
-	overlay 		   overlayModel
+	overlay            overlayModel
 	stage              Stage
 	currRow            int
 	availableProviders []string
-	width int
-	height int
+	width              int
+	height             int
 }
 
 var dim = lipgloss.NewStyle().Faint(true)
 
 func NewWizard(c *Config) wizardModel {
 	return wizardModel{
-		c: c, 
-		overlay: NewOverlay(),
-		showOverlay: false, 
-		stage: adjustProvider,
-		currRow: 0, 
+		c:                  c,
+		overlay:            NewOverlay(),
+		showOverlay:        false,
+		stage:              adjustProvider,
+		currRow:            0,
 		availableProviders: []string{"OpenAI", "Groq", "Ollama", "Custom openai style endpoint"},
 	}
 }
@@ -61,7 +61,7 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			log.Println(m.currRow)
-			if m.stage == adjustProvider{
+			if m.stage == adjustProvider {
 				m.currRow = min(len(m.availableProviders)-1, m.currRow+1)
 			}
 		case "k", "up":
@@ -71,12 +71,26 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currRow = max(0, m.currRow-1)
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "ctrl+p":
-			m.showOverlay = !m.showOverlay
+		case "enter":
+			if m.showOverlay {
+				if !m.overlay.IsValid() {
+					s := lipgloss.NewStyle().Foreground(lipgloss.Color("#961c92"))
+					m.overlay.SetMsg(s.Render("Please fill all the required fields"))
+				} else {
+					m.showOverlay = false
+					np := m.overlay.GetInputs()
+					log.Println(np)
+					m.stage = adjustSTT
+				}
+			} else {
+				m.showOverlay = true
+			}
 		}
 	}
-	
-	m.overlay, cmd = m.overlay.Update(msg)
+
+	if m.showOverlay {
+		m.overlay, cmd = m.overlay.Update(msg)
+	}
 	// case tea.WindowSizeMsg:
 	// if !m.ready {
 	// m.ready = true
@@ -90,13 +104,13 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func overlayAt(bg, fg string, x, y int) string{
+func overlayAt(bg, fg string, x, y int) string {
 	bgLines := strings.Split(bg, "\n")
 	fgLines := strings.Split(fg, "\n")
 
-	for i, line := range fgLines{
+	for i, line := range fgLines {
 		by := y + i
-		if by < 0 || by >= len(bgLines){
+		if by < 0 || by >= len(bgLines) {
 			continue
 		}
 
@@ -126,6 +140,8 @@ func (m wizardModel) View() string {
 	// Select TTS
 	var view strings.Builder
 	switch m.stage {
+	case adjustSTT:
+		fmt.Fprint(&view, "Hello")
 	case adjustProvider:
 		if m.currRow >= len(m.availableProviders) || m.currRow < 0 {
 			m.currRow = 0
@@ -140,15 +156,15 @@ func (m wizardModel) View() string {
 		}
 	}
 	base := view.String()
-	if m.showOverlay{
+	if m.showOverlay {
 		// Overlay math assumes a fixed-size background canvas.
 		if m.width > 0 && m.height > 0 {
 			base = lipgloss.NewStyle().Width(m.width).Height(m.height).Render(base)
 		}
 
 		overlayBox := m.overlay.View()
-		x := m.width / 2 - lipgloss.Width(overlayBox) / 2
-		y := m.height / 2 - lipgloss.Height(overlayBox) / 2
+		x := m.width/2 - lipgloss.Width(overlayBox)/2
+		y := m.height/2 - lipgloss.Height(overlayBox)/2
 		faintBase := dim.Render(base)
 		return overlayAt(faintBase, overlayBox, x, y)
 	}
