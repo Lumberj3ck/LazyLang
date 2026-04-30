@@ -15,29 +15,61 @@ type Stage int
 const (
 	adjustProvider Stage = iota
 	adjustSTT
+	finishedSetup
 )
 
 type wizardModel struct {
-	c                  *Config
-	showOverlay        bool
-	overlay            overlayModel
-	stage              Stage
-	currRow            int
-	availableProviders []string
-	width              int
-	height             int
+	exitErr       error
+	c             *Config
+	showOverlay   bool
+	overlay       overlayModel
+	stage         Stage
+	currRow       int
+	providersList []ProviderAvailable
+	width         int
+	height        int
 }
 
 var dim = lipgloss.NewStyle().Faint(true)
 
+var providersKey = map[string]string{
+	"openai": "OpenAI",
+	"groq":   "Groq",
+	"ollama": "Ollama",
+}
+
+type SttEntity struct {
+	key  string
+	name string
+}
+
+type ProviderAvailable struct {
+	available bool
+	key       string
+}
+
+var localStt = "local"
+var hostedStt = "hosted"
+var sttsKey = []SttEntity{
+	{localStt, "Local Whisper model"},
+	{hostedStt, "Hosted Stt model"},
+}
+
 func NewWizard(c *Config) wizardModel {
+	providers := make([]ProviderAvailable, 0, len(providersKey))
+	for key := range providersKey {
+		log.Printf("%q", c)
+		_, available := c.Providers[key]
+		providers = append(providers, ProviderAvailable{available, key})
+	}
+
 	return wizardModel{
-		c:                  c,
-		overlay:            NewOverlay(),
-		showOverlay:        false,
-		stage:              adjustProvider,
-		currRow:            0,
-		availableProviders: []string{"OpenAI", "Groq", "Ollama", "Custom openai style endpoint"},
+		c:             c,
+		overlay:       NewOverlay(true, true, true),
+		showOverlay:   false,
+		stage:         adjustProvider,
+		currRow:       0,
+		providersList: providers,
 	}
 }
 
@@ -60,10 +92,17 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showOverlay {
 				break
 			}
-			log.Println(m.currRow)
-			if m.stage == adjustProvider {
-				m.currRow = min(len(m.availableProviders)-1, m.currRow+1)
+			var rowsNum int
+
+			switch m.stage {
+			case adjustProvider:
+				rowsNum = len(m.providersList)
+			case adjustSTT:
+				rowsNum = len(sttsKey)
 			}
+			m.currRow = min(rowsNum-1, m.currRow+1)
+		case "esc":
+			m.showOverlay = false
 		case "k", "up":
 			if m.showOverlay {
 				break
@@ -76,14 +115,42 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.overlay.IsValid() {
 					s := lipgloss.NewStyle().Foreground(lipgloss.Color("#961c92"))
 					m.overlay.SetMsg(s.Render("Please fill all the required fields"))
-				} else {
+					break
+				}
+				switch m.stage {
+				case adjustProvider:
+					m.showOverlay = false
+					provider := m.providersList[m.currRow]
+					np := m.overlay.GetInputs()
+					m.c.Providers[provider.key] = np
+					m.c.CompletionProvider = provider.key
+
+					log.Println(m.c)
+					m.stage = adjustSTT
+					m.currRow = 0
+				case adjustSTT:
 					m.showOverlay = false
 					np := m.overlay.GetInputs()
-					log.Println(np)
-					m.stage = adjustSTT
+					t := sttsKey[m.currRow]
+					s := STTBackend{
+						Type:  STTType(t.key),
+						Model: np.Model,
+						URL:   np.BaseURL,
+						Token: np.Token,
+					}
+					m.c.STTBackend = s
+					if err := SaveConfig(*m.c); err != nil {
+						m.exitErr = err
+						return m, tea.Quit
+					}
+					m.stage = finishedSetup
 				}
 			} else {
 				m.showOverlay = true
+				t := sttsKey[m.currRow]
+				if m.stage == adjustSTT && t.key == localStt {
+					m.overlay = NewOverlay(false, false, true)
+				}
 			}
 		}
 	}
@@ -141,19 +208,28 @@ func (m wizardModel) View() string {
 	var view strings.Builder
 	switch m.stage {
 	case adjustSTT:
-		fmt.Fprint(&view, "Hello")
-	case adjustProvider:
-		if m.currRow >= len(m.availableProviders) || m.currRow < 0 {
-			m.currRow = 0
+		for i, stt := range sttsKey {
+			check := " "
+			if i == m.currRow {
+				check = "x"
+			}
+			fmt.Fprintf(&view, "[%s] %s\n", check, stt.name)
 		}
-
-		for idx, provider := range m.availableProviders {
+	case adjustProvider:
+		for idx, provider := range m.providersList {
+			name := providersKey[provider.key]
+			checkSign := " "
+			if provider.available {
+				checkSign = "✓"
+			}
 			if m.currRow == idx {
-				fmt.Fprintf(&view, "> %s\n", provider)
+				fmt.Fprintf(&view, "> %s %s\n", name, checkSign)
 			} else {
-				fmt.Fprintf(&view, "  %s\n", provider)
+				fmt.Fprintf(&view, "  %s %s\n", name, checkSign)
 			}
 		}
+	case finishedSetup:
+		fmt.Fprintf(&view, "Setup is done; reload app")
 	}
 	base := view.String()
 	if m.showOverlay {

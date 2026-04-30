@@ -755,10 +755,15 @@ func main() {
 			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 			tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 		)
-		_, err := sp.Run()
+		m, err := sp.Run()
 
 		if err != nil {
-			fmt.Println("could not run setup wizard:", err)
+			fmt.Println("Setup wizard error:", err)
+			os.Exit(1)
+		}
+
+		if mm, ok := m.(wizardModel); ok && mm.exitErr != nil {
+			fmt.Fprintln(os.Stderr, mm.exitErr)
 			os.Exit(1)
 		}
 	}

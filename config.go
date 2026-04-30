@@ -71,30 +71,28 @@ func NewConfig() Config {
 	}
 }
 
-func CreateDefaultConfig() (Config, error) {
-	config := NewConfig()
-
+func SaveConfig(config Config) error {
 	configPath := GetConfigPath()
 
 	err := os.MkdirAll(filepath.Dir(configPath), 0755)
 	if err != nil {
-		return config, err
+		return err
 	}
 
 	file, err := os.Create(configPath)
 	if err != nil {
-		return config, err
+		return err
 	}
 
 	defer file.Close()
 
 	s, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		return config, err
+		return err
 	}
 
 	file.Write(s)
-	return config, nil
+	return nil
 }
 
 func GetConfigPath() string {
@@ -210,7 +208,7 @@ func resolveCompletionProvider(config Config) (Provider, error) {
 	p, ok := config.Providers[name]
 	if !ok {
 		keys := make([]string, 0, len(config.Providers))
-		for key, _ := range config.Providers {
+		for key := range config.Providers {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
