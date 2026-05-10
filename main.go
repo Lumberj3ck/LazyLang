@@ -118,9 +118,9 @@ func initialModel(propose bool, config Config) model {
 
 	var transcriber transriber.Transcriber
 	switch config.STTBackend.Type {
-	case HostedSTT:
-		sttBaseURL := resolveHostedSTTBaseURL(config)
-		sttToken := resolveHostedSTTToken(config)
+	case ProviderSTT:
+		sttBaseURL := resolveProviderSTTBaseURL(config)
+		sttToken := resolveProviderSTTToken(config)
 		transcriber = transriber.NewOpenAITranscriber(sttBaseURL, sttToken, config.STTBackend.Model, config.Language)
 	case LocalSTT:
 		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model, config.Language)
@@ -739,6 +739,9 @@ func (m model) View() string {
 }
 
 func main() {
+	proposeTopic := flag.Bool("p", false, "When this flag is specified conversation topic will be proposed")
+	startSetup := flag.Bool("s", false, "Setup wizard")
+	flag.Parse()
 
 	f, err := tea.LogToFile("tea.log", "")
 	if err != nil {
@@ -748,8 +751,7 @@ func main() {
 	defer f.Close()
 
 	config, err := GetConfig()
-	if err != nil {
-		log.Printf("Error parsing config: %v", err)
+	if err != nil || *startSetup {
 		sp := tea.NewProgram(
 			NewWizard(&config),
 			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
@@ -759,16 +761,14 @@ func main() {
 
 		if err != nil {
 			fmt.Println("Setup wizard error:", err)
-			os.Exit(1)
 		}
 
 		if mm, ok := m.(wizardModel); ok && mm.exitErr != nil {
 			fmt.Fprintln(os.Stderr, mm.exitErr)
-			os.Exit(1)
 		}
+		os.Exit(1)
 	}
 
-	proposeTopic := flag.Bool("propose", false, "When this flag is specified conversation topic will be proposed")
 
 	// setupWizard := flag.Bool("setup", false, "Setup wizard")
 	// Load existing config and show what is configured
@@ -787,7 +787,6 @@ func main() {
 	// 		Run local
 	// 		Skip (Same check If we already have STT, otherwise exit and on new start redirect here)
 	// Select TTS
-	flag.Parse()
 
 	p := tea.NewProgram(
 		initialModel(*proposeTopic, config),

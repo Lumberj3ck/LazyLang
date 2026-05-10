@@ -49,10 +49,10 @@ type ProviderAvailable struct {
 }
 
 var localStt = "local"
-var hostedStt = "hosted"
+var providerStt = "provider"
 var sttsKey = []SttEntity{
 	{localStt, "Local Whisper model"},
-	{hostedStt, "Hosted Stt model"},
+	{providerStt, "Provider STT model"},
 }
 
 func NewWizard(c *Config) wizardModel {
@@ -147,9 +147,12 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else {
 				m.showOverlay = true
-				t := sttsKey[m.currRow]
-				if m.stage == adjustSTT && t.key == localStt {
-					m.overlay = NewOverlay(false, false, true)
+				m.overlay = NewOverlay(true, true, true)
+				if m.stage == adjustSTT {
+					t := sttsKey[m.currRow]
+					if t.key == localStt {
+						m.overlay = NewOverlay(false, false, true)
+					}
 				}
 			}
 		}

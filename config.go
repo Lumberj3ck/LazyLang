@@ -38,19 +38,19 @@ type Config struct {
 	TTSBackend                TTSBackend `json:"tts_backend"`
 	// Key into `providers` selecting the LLM provider to use.
 	CompletionProvider string `json:"completion_provider"`
-	// whispercpp, hosted whispercpp
+	// whispercpp, provider whispercpp
 	STTBackend STTBackend `json:"stt_backend"`
 }
 
 type STTType string
 
 const (
-	HostedSTT STTType = "hosted"
+	ProviderSTT STTType = "provider"
 	LocalSTT  STTType = "local"
 )
 
 type STTBackend struct {
-	// hosted, local
+	// provider, local
 	Type  STTType `json:"type"`
 	Model string  `json:"model"`
 	URL   string  `json:"url,omitempty"`
@@ -103,7 +103,7 @@ func GetConfigPath() string {
 var invalidApiKey = errors.New("Invalid API key")
 var invalidSttBackend = errors.New("Invalid STT backend")
 
-func CheckHostedSTT(config Config, baseURL string, apiKey string) error {
+func CheckProviderSTT(config Config, baseURL string, apiKey string) error {
 	client := &http.Client{}
 
 	model := config.STTBackend.Model
@@ -148,19 +148,19 @@ func modelAvailable(url string) bool {
 
 func isSTTValid(config Config) error {
 	switch config.STTBackend.Type {
-	case HostedSTT:
-		baseURL := resolveHostedSTTBaseURL(config)
+	case ProviderSTT:
+		baseURL := resolveProviderSTTBaseURL(config)
 		if baseURL == "" {
-			return errors.New("hosted STT requires a base URL")
+			return errors.New("provider STT requires a base URL")
 		}
 		if config.STTBackend.URL != "" && config.STTBackend.Token == "" {
 			return errors.New("stt_backend.token is required when stt_backend.url is set")
 		}
-		token := resolveHostedSTTToken(config)
+		token := resolveProviderSTTToken(config)
 		if token == "" {
 			return invalidApiKey
 		}
-		return CheckHostedSTT(config, baseURL, token)
+		return CheckProviderSTT(config, baseURL, token)
 	case LocalSTT:
 		model := config.STTBackend.Model
 		if filepath.Ext(model) != ".bin" {
@@ -252,7 +252,7 @@ func completionTokenRequired(baseURL, token string) bool {
 	return baseURLRequiresToken(baseURL)
 }
 
-func resolveHostedSTTBaseURL(config Config) string {
+func resolveProviderSTTBaseURL(config Config) string {
 	base := config.STTBackend.URL
 	if base == "" {
 		if p, err := resolveCompletionProvider(config); err == nil {
@@ -262,7 +262,7 @@ func resolveHostedSTTBaseURL(config Config) string {
 	return strings.TrimRight(base, "/")
 }
 
-func resolveHostedSTTToken(config Config) string {
+func resolveProviderSTTToken(config Config) string {
 	if config.STTBackend.Token != "" {
 		return config.STTBackend.Token
 	}
