@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,7 +58,14 @@ var sttsKey = []SttEntity{
 
 func NewWizard(c *Config) wizardModel {
 	providers := make([]ProviderAvailable, 0, len(providersKey))
+
+	sortedProvidersKey := make([]string, 0, len(providersKey))
 	for key := range providersKey {
+		sortedProvidersKey = append(sortedProvidersKey, key)
+	}
+	sort.Strings(sortedProvidersKey)
+
+	for _, key := range sortedProvidersKey{
 		log.Printf("%q", c)
 		_, available := c.Providers[key]
 		providers = append(providers, ProviderAvailable{available, key})
@@ -209,6 +217,7 @@ func (m wizardModel) View() string {
 	// 		Skip (Same check If we already have STT, otherwise exit and on new start redirect here)
 	// Select TTS
 	var view strings.Builder
+	view.WriteString("Setup Wizard: \n\n")
 	switch m.stage {
 	case adjustSTT:
 		for i, stt := range sttsKey {

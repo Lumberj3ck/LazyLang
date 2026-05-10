@@ -149,18 +149,10 @@ func modelAvailable(url string) bool {
 func isSTTValid(config Config) error {
 	switch config.STTBackend.Type {
 	case ProviderSTT:
-		baseURL := resolveProviderSTTBaseURL(config)
-		if baseURL == "" {
-			return errors.New("provider STT requires a base URL")
-		}
 		if config.STTBackend.URL != "" && config.STTBackend.Token == "" {
 			return errors.New("stt_backend.token is required when stt_backend.url is set")
 		}
-		token := resolveProviderSTTToken(config)
-		if token == "" {
-			return invalidApiKey
-		}
-		return CheckProviderSTT(config, baseURL, token)
+		return CheckProviderSTT(config, config.STTBackend.URL, config.STTBackend.Token)
 	case LocalSTT:
 		model := config.STTBackend.Model
 		if filepath.Ext(model) != ".bin" {
@@ -252,26 +244,6 @@ func completionTokenRequired(baseURL, token string) bool {
 	return baseURLRequiresToken(baseURL)
 }
 
-func resolveProviderSTTBaseURL(config Config) string {
-	base := config.STTBackend.URL
-	if base == "" {
-		if p, err := resolveCompletionProvider(config); err == nil {
-			base = p.BaseURL
-		}
-	}
-	return strings.TrimRight(base, "/")
-}
-
-func resolveProviderSTTToken(config Config) string {
-	if config.STTBackend.Token != "" {
-		return config.STTBackend.Token
-	}
-	if p, err := resolveCompletionProvider(config); err == nil {
-		return p.Token
-	}
-	return ""
-}
-
 func GetConfig() (Config, error) {
 	configPath := GetConfigPath()
 	configFile, err := os.Open(configPath)
@@ -291,23 +263,27 @@ func GetConfig() (Config, error) {
 		return NewConfig(), err
 	}
 
+	var retErr error
 	completionProvider, err := resolveCompletionProvider(config)
+	
 	if err != nil {
-		return NewConfig(), fmt.Errorf("%s: %w", configPath, err)
+		config.CompletionProvider = ""
+		retErr = fmt.Errorf("%s: %w", configPath, err)
 	}
 	if completionProvider.BaseURL == "" {
-		return NewConfig(), fmt.Errorf("completion provider base_url is required in %s", configPath)
+		retErr = fmt.Errorf("completion provider base_url is required in %s", configPath)
 	}
 	if completionProvider.Model == "" {
-		return NewConfig(), fmt.Errorf("completion provider model is required in %s", configPath)
+		retErr = fmt.Errorf("completion provider model is required in %s", configPath)
 	}
 	if completionTokenRequired(completionProvider.BaseURL, completionProvider.Token) {
-		return NewConfig(), fmt.Errorf("completion provider token required for %s", completionProvider.BaseURL)
+		retErr = fmt.Errorf("completion provider token required for %s", completionProvider.BaseURL)
 	}
 	err = isSTTValid(config)
 	if err != nil {
-		return NewConfig(), err
+		config.STTBackend = STTBackend{}
+		retErr = err
 	}
 
-	return config, nil
+	return config, retErr
 }

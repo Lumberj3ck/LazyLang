@@ -119,8 +119,8 @@ func initialModel(propose bool, config Config) model {
 	var transcriber transriber.Transcriber
 	switch config.STTBackend.Type {
 	case ProviderSTT:
-		sttBaseURL := resolveProviderSTTBaseURL(config)
-		sttToken := resolveProviderSTTToken(config)
+		sttBaseURL := config.STTBackend.URL
+		sttToken := config.STTBackend.Token
 		transcriber = transriber.NewOpenAITranscriber(sttBaseURL, sttToken, config.STTBackend.Model, config.Language)
 	case LocalSTT:
 		transcriber = transriber.NewWhispercppTranscriber(config.STTBackend.Model, config.Language)
@@ -751,6 +751,7 @@ func main() {
 	defer f.Close()
 
 	config, err := GetConfig()
+	log.Println("ERR  ", err)
 	if err != nil || *startSetup {
 		sp := tea.NewProgram(
 			NewWizard(&config),
@@ -768,7 +769,7 @@ func main() {
 		}
 		os.Exit(1)
 	}
-
+	log.Println("HERE")
 
 	// setupWizard := flag.Bool("setup", false, "Setup wizard")
 	// Load existing config and show what is configured
