@@ -59,7 +59,7 @@ type model struct {
 	initialTopic     string
 }
 
-func initialModel(propose bool, config Config) model {
+func initialModel(proposeLevel string, config Config) model {
 	completionProvider, err := resolveCompletionProvider(config)
 	if err != nil {
 		log.Printf("Error loading completion provider: %v\n", err)
@@ -75,7 +75,26 @@ func initialModel(propose bool, config Config) model {
 		os.Exit(1)
 	}
 
+	var topic string
+	if proposeLevel != "" {
+		randomTopic, topicErr := RandomTopicByLevel(proposeLevel)
+		if topicErr != nil {
+			fmt.Println("Couldn't propose topic failed with:", topicErr.Error())
+			os.Exit(1)
+		}
+		topic = FormatTopicForChat(randomTopic)
+		translatedTopic, translateErr := TranslateTopicForLanguage(context.Background(), llm, topic, config.Language, proposeLevel)
+		if translateErr != nil {
+			log.Printf("Failed to translate topic to %s, using original: %v", config.Language, translateErr)
+		} else {
+			topic = translatedTopic
+		}
+	}
+
 	systemMsg := fmt.Sprintf("You are a %s teacher. Respond to the following question or statement in %s. Important: only give short answers to the questions!", config.Language, config.Language)
+	if topic != "" {
+		systemMsg = fmt.Sprintf("%s\n\nConversation topic and guidance for this session:\n%s\n\nKeep the conversation centered on this topic.", systemMsg, topic)
+	}
 	prompt := prompts.NewChatPromptTemplate([]prompts.MessageFormatter{
 		prompts.NewSystemMessagePromptTemplate(systemMsg, nil),
 		prompts.MessagesPlaceholder{VariableName: "history"},
@@ -92,23 +111,6 @@ func initialModel(propose bool, config Config) model {
 		os.Exit(1)
 	}
 	persistedHistory.Session = fmt.Sprintf("%d", session_id)
-
-	var topic string
-	if propose {
-		topic, err = llms.GenerateFromSinglePrompt(context.Background(), llm,
-			fmt.Sprintf("Propose a random conversation topic or question in %s. Choose from a wide variety of subjects: hobbies, travel, food, culture, work, dreams, nature, technology, sports, art, etc. Reply only with the topic or question itself, nothing else.", config.Language),
-			llms.WithTemperature(2),
-		)
-		if err != nil {
-			fmt.Println("Couldn't propose topic failed with: ", err.Error())
-			os.Exit(1)
-		}
-		err = persistedHistory.AddAIMessage(context.Background(), topic)
-		if err != nil {
-			fmt.Println("Failed to add starting topic: ", err.Error())
-			os.Exit(1)
-		}
-	}
 
 	llmChain.Memory = memory.NewConversationBuffer(
 		memory.WithChatHistory(persistedHistory),
@@ -146,6 +148,24 @@ func initialModel(propose bool, config Config) model {
 		transcriber:  transcriber,
 		initialTopic: topic,
 	}
+}
+
+func TranslateTopicForLanguage(ctx context.Context, llm llms.Model, topicText string, language string, level string) (string, error) {
+	if strings.TrimSpace(topicText) == "" {
+		return topicText, nil
+	}
+
+	cleanLevel := strings.ToUpper(strings.TrimSpace(level))
+	prompt := fmt.Sprintf("Translate the following conversation topic and guide into %s. Keep exactly the same structure, line breaks, numbering, and labels. Translate only the content text. Use CEFR %s-level vocabulary (lexicon), and avoid unnecessarily hard words beyond that level. Return only the translated result with no extra notes.\n\n%s", language, cleanLevel, topicText)
+	translated, err := llms.GenerateFromSinglePrompt(ctx, llm, prompt, llms.WithTemperature(0))
+	if err != nil {
+		return "", err
+	}
+	translated = strings.TrimSpace(translated)
+	if translated == "" {
+		return "", fmt.Errorf("empty translation result")
+	}
+	return translated, nil
 }
 
 func (m model) Init() tea.Cmd {
@@ -354,7 +374,6 @@ func StartDownloadPiperModel(m model, msg DownloadPiperModel, downloadReport cha
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var initialTopicCmd tea.Cmd
 	switch msg := msg.(type) {
 	case DownloadPiperModel:
 		m.UpdateStatus("Downloading tts model")
@@ -648,9 +667,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.initialTopic != "" {
 			topic := m.initialTopic
 			m.initialTopic = ""
-			initialTopicCmd = func() tea.Msg {
-				return ReadyCompletion{completion: topic, addContent: true}
-			}
+			m.content = fmt.Sprintf("%s%s\n\n", m.content, topic)
+			highlightedTopic := HighlightFocusWord(m.content, m.focusRow, m.focusColl)
+			setViewportContent(&m, highlightedTopic)
 		}
 	}
 
@@ -661,9 +680,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.chats, cmd = m.chats.Update(msg)
 
 	cmds = append(cmds, cmd)
-	if initialTopicCmd != nil {
-		cmds = append(cmds, initialTopicCmd)
-	}
 	return m, tea.Batch(cmds...)
 }
 
@@ -739,7 +755,8 @@ func (m model) View() string {
 }
 
 func main() {
-	proposeTopic := flag.Bool("p", false, "When this flag is specified conversation topic will be proposed")
+	proposeLevel := flag.String("propose", "", "Propose and start from a random topic for level (a1, a2, b1, b2, c1, c2)")
+	flag.StringVar(proposeLevel, "p", "", "Shorthand for --propose")
 	startSetup := flag.Bool("s", false, "Setup wizard")
 	flag.Parse()
 
@@ -790,7 +807,7 @@ func main() {
 	// Select TTS
 
 	p := tea.NewProgram(
-		initialModel(*proposeTopic, config),
+		initialModel(*proposeLevel, config),
 		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
 		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 	)

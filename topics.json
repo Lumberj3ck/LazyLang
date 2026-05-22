@@ -1,0 +1,1872 @@
+{
+  "a1": [
+    {
+      "id": "a1-1",
+      "title": "Say Hello",
+      "desc": "Introduce yourself and ask how they are.",
+      "target_role": "Friendly Neighbor",
+      "guide": [
+        "Say your name and where you're from",
+        "Ask their name",
+        "Ask how they are",
+        "Say what you do for work",
+        "Ask how long they've lived here",
+        "What do you do for a living?",
+        "Do you like living here?",
+        "Where are you from?",
+        "Do you have family?",
+        "Can you repeat that please?",
+        "Please speak more slowly.",
+        "What does that mean?",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a1-2",
+      "title": "Order a Coffee",
+      "desc": "Order a coffee and a pastry at a cafe.",
+      "target_role": "Cafe Server",
+      "guide": [
+        "Order a drink",
+        "Order something to eat",
+        "Ask how much it costs",
+        "Say you'd like to pay",
+        "What can you recommend?",
+        "Do you also have tea?",
+        "Is the cake fresh?",
+        "Can I pay by card?",
+        "Do you have oat milk?",
+        "Can you repeat that please?",
+        "Please speak more slowly.",
+        "What's that called in German?",
+        "How do you say 'sausage' in German?"
+      ]
+    },
+    {
+      "id": "a1-3",
+      "title": "Buy Groceries",
+      "desc": "Ask for bread, milk, and apples at a small shop.",
+      "target_role": "Shop Owner",
+      "guide": [
+        "Ask for bread",
+        "Ask for milk and apples",
+        "Ask the total price",
+        "Ask if they have something else",
+        "How much per kilo?",
+        "Is that organic?",
+        "Do you have a bag?",
+        "Until when are you open?",
+        "Can you repeat that please?",
+        "What does that mean?",
+        "What's that called in English?",
+        "Slower please!"
+      ]
+    },
+    {
+      "id": "a1-4",
+      "title": "Ask the Time",
+      "desc": "You forgot your watch. Ask a stranger what time it is.",
+      "target_role": "Passerby",
+      "guide": [
+        "Get their attention politely",
+        "Ask what time it is",
+        "Understand the answer (halb drei = 2:30)",
+        "Ask a follow-up question",
+        "Where is the nearest subway?",
+        "Is it far to the train station?",
+        "Is there a cafe nearby?",
+        "Can you repeat that please?",
+        "I didn't understand that.",
+        "Do you speak English?"
+      ]
+    },
+    {
+      "id": "a1-5",
+      "title": "Book a Table",
+      "desc": "Reserve a table for two people tonight.",
+      "target_role": "Restaurant Host",
+      "guide": [
+        "Say you want to reserve a table",
+        "Say how many people and when",
+        "Give your name for the reservation",
+        "Ask about the menu",
+        "Is there a table by the window?",
+        "Do you have a terrace?",
+        "What is your specialty?",
+        "Until what time are you open?",
+        "Can you spell that please?",
+        "Can you repeat that please?",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a1-6",
+      "title": "At the Hotel",
+      "desc": "Check in and ask where your room is.",
+      "target_role": "Hotel Receptionist",
+      "guide": [
+        "Say you have a reservation",
+        "Ask where your room is",
+        "Ask about breakfast",
+        "Ask about the WiFi password",
+        "Is there an elevator?",
+        "Can I order a taxi?",
+        "Where can you eat well around here?",
+        "Until when is check-out?",
+        "Can you write that down please?",
+        "I didn't understand that.",
+        "Please speak more slowly."
+      ]
+    },
+    {
+      "id": "a1-7",
+      "title": "Family Photos",
+      "desc": "Describe your family members to a new friend.",
+      "target_role": "New Acquaintance",
+      "guide": [
+        "Describe who is in the photo",
+        "Talk about siblings",
+        "Say ages or occupations",
+        "Ask about their family",
+        "Are you married?",
+        "Do you have children?",
+        "Where does your family live?",
+        "Do you see your family often?",
+        "How do you say 'nephew' in German?",
+        "Can you repeat that please?",
+        "What does that word mean?"
+      ]
+    },
+    {
+      "id": "a1-8",
+      "title": "Weather Chat",
+      "desc": "Talk about today's weather and what you'll do.",
+      "target_role": "Colleague",
+      "guide": [
+        "Comment on today's weather",
+        "Say what you'll do today",
+        "Ask what they'll do",
+        "Talk about what weather you prefer",
+        "What will the weather be like tomorrow?",
+        "Will it rain on the weekend?",
+        "Do I need an umbrella?",
+        "Do you like winter?",
+        "Can you repeat that please?",
+        "What does that mean?",
+        "What's that called in English?"
+      ]
+    },
+    {
+      "id": "a1-9",
+      "title": "Exam: Picture Description",
+      "desc": "Describe what you see in a simple picture (Goethe A1 style).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Say what you see",
+        "Describe the people",
+        "Say what they're doing",
+        "Describe the location",
+        "Give your opinion",
+        "Can you repeat the question?",
+        "I'm not sure, but...",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a1-10",
+      "title": "Exam: Personal Questions",
+      "desc": "Answer questions about yourself: name, age, hobbies.",
+      "target_role": "Examiner",
+      "guide": [
+        "Say your name and origin",
+        "Talk about your hobbies",
+        "Say where you live and work",
+        "Describe your daily routine",
+        "Can you repeat the question?",
+        "Did I understand the question correctly?",
+        "I'm not sure, but..."
+      ]
+    },
+    {
+      "id": "a1-exam-3",
+      "title": "Exam: Ask and Answer",
+      "desc": "Ask and answer simple questions using word cards (Goethe A1 Sprechen Teil 1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Ask a question using the question word on the card",
+        "Answer your partner's question",
+        "Ask about: job, home, hobby",
+        "Answer in complete sentences",
+        "What is your profession?",
+        "Where do you live?",
+        "What are your hobbies?",
+        "Do you have children?",
+        "Can you repeat the question?",
+        "I didn't understand that.",
+        "Pardon?"
+      ]
+    },
+    {
+      "id": "a1-exam-4",
+      "title": "Exam: Make a Request",
+      "desc": "Ask someone to do something or respond to a request (Goethe A1 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Ask your partner for something",
+        "Respond to a request",
+        "Say yes or no and why",
+        "Say thank you",
+        "Can you please help me?",
+        "Do you have a pen for me?",
+        "Can you open the window?",
+        "May I use your phone?",
+        "Yes, of course!",
+        "Sorry, that's not possible.",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a1-exam-5",
+      "title": "Exam: Spell and Give Numbers",
+      "desc": "Spell your name, give phone numbers and addresses (Goethe A1 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Spell your name",
+        "Say your phone number",
+        "Say your address",
+        "Say your email address",
+        "How do you spell that?",
+        "What is your zip code?",
+        "Can you spell that please?",
+        "What is your mobile number?",
+        "Once more please, slowly.",
+        "Is that correct?",
+        "I'll repeat: ..."
+      ]
+    },
+    {
+      "id": "a1-exam-6",
+      "title": "Exam: Daily Life Questions",
+      "desc": "Answer questions about food, family, and daily routine (Goethe A1 Sprechen Teil 3).",
+      "target_role": "Examiner",
+      "guide": [
+        "Tell what you eat for breakfast",
+        "Describe your family",
+        "Say when you get up",
+        "Tell what you do on weekends",
+        "What do you like to eat?",
+        "How many people are in your family?",
+        "When do you go to bed?",
+        "What do you do in the evening?",
+        "Can you repeat the question?",
+        "I don't understand the question.",
+        "Please speak more slowly."
+      ]
+    },
+    {
+      "id": "a1-exam-7",
+      "title": "Exam: Shopping Situation",
+      "desc": "Buy something and ask about price and quantity (Goethe A1 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Say what you want to buy",
+        "Ask about the price",
+        "Say how much you need",
+        "Pay and say thank you",
+        "How much does that cost?",
+        "Do you have that in red too?",
+        "Where do I find bread?",
+        "Can I pay by card?",
+        "That's too expensive.",
+        "I'll take that.",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a1-exam-8",
+      "title": "Exam: Time and Appointments",
+      "desc": "Talk about times, days, and make simple appointments (Goethe A1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Ask about the time",
+        "Suggest an appointment",
+        "Say when you're free",
+        "Confirm the appointment",
+        "What time is it?",
+        "Are you free on Monday?",
+        "At what time?",
+        "Does 10 o'clock work for you?",
+        "That works for me.",
+        "No, I can't then unfortunately.",
+        "Can we pick another day?"
+      ]
+    },
+    {
+      "id": "a1-exam-9",
+      "title": "Exam: Describe a Person",
+      "desc": "Describe a person's appearance and clothing (Goethe A1 Sprechen Teil 3).",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the appearance",
+        "Say what clothes the person wears",
+        "Say the colors",
+        "Say whether the person is young or old",
+        "The person has brown hair.",
+        "She is wearing a blue jacket.",
+        "He is tall and slim.",
+        "The woman looks friendly.",
+        "I'm not sure, but...",
+        "How do you say ... in German?",
+        "Can you help me?"
+      ]
+    },
+    {
+      "id": "a1-exam-10",
+      "title": "Exam: At the Doctor",
+      "desc": "Describe simple health problems and make an appointment (Goethe A1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Say what hurts",
+        "Ask for an appointment",
+        "Say since when you've been sick",
+        "Ask about the medicine",
+        "I have a headache.",
+        "My stomach hurts.",
+        "Do you have an appointment free tomorrow?",
+        "What should I take?",
+        "Can you repeat that please?",
+        "I didn't understand that.",
+        "What's that called in German?"
+      ]
+    }
+  ],
+  "a2": [
+    {
+      "id": "a2-1",
+      "title": "Buy a Train Ticket",
+      "desc": "Get a ticket to Munich, ask about departure times.",
+      "target_role": "Ticket Agent",
+      "guide": [
+        "Say where you want to go",
+        "Ask about departure times",
+        "Say one-way or return",
+        "Ask about the platform",
+        "Do I have to change trains?",
+        "Is there a direct train?",
+        "How long does the journey take?",
+        "Is there a student discount?",
+        "Can you repeat that please?",
+        "Can you write that down?",
+        "I didn't understand that."
+      ]
+    },
+    {
+      "id": "a2-2",
+      "title": "Doctor's Appointment",
+      "desc": "Describe your symptoms and ask for advice.",
+      "target_role": "Doctor",
+      "guide": [
+        "Describe your symptoms",
+        "Say how long you've been sick",
+        "Ask what you should do",
+        "Ask about medication",
+        "Is that contagious?",
+        "Can I get a sick note?",
+        "How often should I take that?",
+        "Should I come back again?",
+        "Am I allowed to exercise?",
+        "What's the medication called again?",
+        "Can you explain that more slowly?",
+        "What does that word mean?"
+      ]
+    },
+    {
+      "id": "a2-3",
+      "title": "Return a Product",
+      "desc": "The shirt doesn't fit. Ask for an exchange.",
+      "target_role": "Shop Assistant",
+      "guide": [
+        "Explain the problem",
+        "Ask for a different size",
+        "Ask about exchange or refund",
+        "Show the receipt",
+        "Can I get my money back?",
+        "Do you have that in another color?",
+        "How long can I exchange?",
+        "Where is the changing room?",
+        "Can you repeat that please?",
+        "I didn't understand that.",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a2-4",
+      "title": "Apartment Viewing",
+      "desc": "Ask about the rent, rooms, and when you can move in.",
+      "target_role": "Landlord",
+      "guide": [
+        "Ask about the rent",
+        "Ask about rooms and size",
+        "Ask about utilities",
+        "Ask when you can move in",
+        "Is there a basement?",
+        "Are pets allowed?",
+        "How high is the deposit?",
+        "What are the neighbors like?",
+        "Is there a balcony?",
+        "Can you repeat that?",
+        "What does 'Nebenkosten' mean?",
+        "Can you show me that?"
+      ]
+    },
+    {
+      "id": "a2-5",
+      "title": "Birthday Invitation",
+      "desc": "Invite a friend to your birthday party.",
+      "target_role": "Friend",
+      "guide": [
+        "Say when your birthday is",
+        "Invite them and say where/when",
+        "Discuss food and drinks",
+        "Ask about dietary needs",
+        "What do you wish for your birthday?",
+        "Should I bring something?",
+        "Who else is coming?",
+        "What's the best way to get to your place?",
+        "What do you mean by that?",
+        "Can you say that again?",
+        "Hold on, let me think."
+      ]
+    },
+    {
+      "id": "a2-6",
+      "title": "Lost Luggage",
+      "desc": "Report your missing suitcase at the airport.",
+      "target_role": "Airport Staff",
+      "guide": [
+        "Explain the problem",
+        "Describe your luggage",
+        "Give your flight details",
+        "Give your contact info",
+        "How long does that usually take?",
+        "Can you deliver to my hotel?",
+        "Will I get compensation?",
+        "Who can I contact?",
+        "Can you write that down?",
+        "I didn't understand that.",
+        "Please speak more slowly."
+      ]
+    },
+    {
+      "id": "a2-7",
+      "title": "Job Interests",
+      "desc": "Talk about your job and what you like about it.",
+      "target_role": "New Colleague",
+      "guide": [
+        "Describe your daily tasks",
+        "Say what you enjoy",
+        "Mention a challenge",
+        "Ask about their work",
+        "How long have you worked here?",
+        "What are the working hours?",
+        "Is there a cafeteria?",
+        "Do you work from home?",
+        "What do you mean?",
+        "Can you explain that again?",
+        "What's that called in German?"
+      ]
+    },
+    {
+      "id": "a2-8",
+      "title": "Weekend Plans",
+      "desc": "Discuss what you did last weekend and future plans.",
+      "target_role": "Language Partner",
+      "guide": [
+        "Describe last weekend (past tense)",
+        "Ask what they did",
+        "Talk about next weekend plans",
+        "Suggest doing something together",
+        "What do you usually do on weekends?",
+        "Have you ever been to...?",
+        "Do you have a favorite place?",
+        "What can you do here on weekends?",
+        "Hold on, I need to think.",
+        "How do you say that in German?",
+        "Can you say that again?"
+      ]
+    },
+    {
+      "id": "a2-9",
+      "title": "Exam: Making Plans",
+      "desc": "Plan a trip or activity with your partner (Goethe A2 style).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Suggest an activity",
+        "Agree on day and time",
+        "Discuss what to bring",
+        "React to their suggestions",
+        "Confirm the plan",
+        "Can you repeat the question?",
+        "Did I understand correctly?",
+        "I'm not sure, but..."
+      ]
+    },
+    {
+      "id": "a2-10",
+      "title": "Exam: Respond to a Situation",
+      "desc": "React appropriately to everyday situations.",
+      "target_role": "Examiner",
+      "guide": [
+        "React appropriately",
+        "Ask a follow-up question",
+        "Offer help or a suggestion",
+        "Express your feelings",
+        "Can you describe the situation again?",
+        "Did I understand correctly?",
+        "What exactly should I say?"
+      ]
+    },
+    {
+      "id": "a2-exam-3",
+      "title": "Exam: Describe Your Life",
+      "desc": "Talk about your past and present life (Goethe A2 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Talk about your childhood",
+        "Say what you used to do",
+        "Describe your life now",
+        "Talk about your plans",
+        "Where did you grow up?",
+        "What did you do in your free time?",
+        "What has changed?",
+        "What do you want to do in the future?",
+        "Can you repeat the question?",
+        "I need to think for a moment.",
+        "Did I understand the question correctly?"
+      ]
+    },
+    {
+      "id": "a2-exam-4",
+      "title": "Exam: Picture Narration",
+      "desc": "Describe a picture and tell a story about it (Goethe A2 Sprechen Teil 2).",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe what you see in the picture",
+        "Say where the people are",
+        "Tell what is happening",
+        "Say what the people might feel",
+        "In the picture I see ...",
+        "The people are in a park.",
+        "I think they are happy.",
+        "That reminds me of ...",
+        "I'm not sure, but I think ...",
+        "How do you say that in German?",
+        "May I add something?"
+      ]
+    },
+    {
+      "id": "a2-exam-5",
+      "title": "Exam: Agree or Disagree",
+      "desc": "React to suggestions and find compromises (Goethe A2 Sprechen Teil 3).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Listen to your partner's suggestion",
+        "Say whether you agree",
+        "Explain why or why not",
+        "Make a counter-suggestion",
+        "Find a common solution",
+        "I think that's good.",
+        "I don't agree.",
+        "I have another idea.",
+        "Can we agree on ...?"
+      ]
+    },
+    {
+      "id": "a2-exam-6",
+      "title": "Exam: Give Advice",
+      "desc": "Give and receive advice for a problem (Goethe A2 Sprechen Teil 3).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Describe a problem",
+        "Ask for advice",
+        "Give your partner advice",
+        "Say whether the advice is good",
+        "What should I do?",
+        "You should go to the doctor.",
+        "Maybe you can ...",
+        "In your place I would ...",
+        "That's a good tip, thanks.",
+        "I'm not sure if that helps.",
+        "Can you say that again please?"
+      ]
+    },
+    {
+      "id": "a2-exam-7",
+      "title": "Exam: Talk About Experiences",
+      "desc": "Describe a past experience or event (Goethe A2 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Tell about an experience",
+        "Say when and where it was",
+        "Describe what happened",
+        "Say how you felt",
+        "Last year I went to Berlin.",
+        "That was a great experience.",
+        "I learned a lot.",
+        "I liked ... best.",
+        "May I think for a moment?",
+        "How do you say ... in German?",
+        "I mean ..."
+      ]
+    },
+    {
+      "id": "a2-exam-8",
+      "title": "Exam: Invitation and Arrangement",
+      "desc": "Invite someone and arrange details together (Goethe A2 Sprechen Teil 3).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Invite your partner",
+        "Discuss the location",
+        "Agree on the time",
+        "Clarify who brings what",
+        "Are you free on Saturday?",
+        "Shall we meet at my place?",
+        "I'll bring a cake.",
+        "What time should we start?",
+        "That doesn't work for me.",
+        "Can we change that?",
+        "Great, see you Saturday!"
+      ]
+    },
+    {
+      "id": "a2-exam-9",
+      "title": "Exam: Explain a Process",
+      "desc": "Explain how to do something step by step (Fit in Deutsch A2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Explain the first step",
+        "Say what to do next",
+        "Give an important tip",
+        "Ask if your partner understood",
+        "First you have to ...",
+        "Then you take ...",
+        "It's important that ...",
+        "At the end you have to ...",
+        "Did you understand that?",
+        "Should I explain that again?",
+        "I'm missing the word in German."
+      ]
+    },
+    {
+      "id": "a2-exam-10",
+      "title": "Exam: Compare Options",
+      "desc": "Compare two options and decide together (Goethe A2 Sprechen Teil 3).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Describe the first option",
+        "Describe the second option",
+        "Say what you prefer",
+        "Agree with your partner",
+        "I think option A is better because ...",
+        "What do you think?",
+        "That's cheaper.",
+        "But the other option is more practical.",
+        "You're right about that.",
+        "I see that differently.",
+        "Okay, let's go with that."
+      ]
+    }
+  ],
+  "b1": [
+    {
+      "id": "b1-1",
+      "title": "Complain About Service",
+      "desc": "Your food order was wrong. Politely complain.",
+      "target_role": "Restaurant Manager",
+      "guide": [
+        "Explain what went wrong",
+        "Ask for a replacement",
+        "Stay polite but firm",
+        "Ask about compensation",
+        "How long do I have to wait?",
+        "Can I speak to the manager?",
+        "Is the dish gluten-free?",
+        "Do you have a complaint form?",
+        "I don't want to complain, but...",
+        "Do you understand what I mean?",
+        "Can you explain that again?"
+      ]
+    },
+    {
+      "id": "b1-2",
+      "title": "Job Interview Basics",
+      "desc": "Introduce yourself and explain your experience.",
+      "target_role": "HR Manager",
+      "guide": [
+        "Describe your education",
+        "Talk about work experience",
+        "Explain why you want this job",
+        "Mention your strengths",
+        "What does a typical workday look like?",
+        "Are there training opportunities?",
+        "How big is the team?",
+        "When can I expect to hear back?",
+        "Good question. Let me think briefly.",
+        "Did I understand your question correctly?",
+        "Can you explain that in more detail?"
+      ]
+    },
+    {
+      "id": "b1-3",
+      "title": "Describe Your Hometown",
+      "desc": "Tell someone about where you grew up.",
+      "target_role": "Curious Local",
+      "guide": [
+        "Describe the location and size",
+        "Talk about what's special",
+        "Mention what you miss",
+        "Compare to where you live now",
+        "Did you grow up here?",
+        "What do you like best about this city?",
+        "What would you recommend to a tourist?",
+        "Are there good restaurants here?",
+        "How do you say that in German?",
+        "I can't think of the word right now.",
+        "Can you repeat that?"
+      ]
+    },
+    {
+      "id": "b1-4",
+      "title": "Cancel a Subscription",
+      "desc": "Call to cancel your gym membership.",
+      "target_role": "Customer Service",
+      "guide": [
+        "Say you want to cancel",
+        "Give a reason",
+        "Decline retention offers",
+        "Confirm the cancellation date",
+        "Do I need to observe a cancellation period?",
+        "Will I get written confirmation?",
+        "Can I pause the contract?",
+        "Are there cancellation fees?",
+        "I understand, but I still want to cancel.",
+        "Can you send me that by email?",
+        "Who do I need to talk to?"
+      ]
+    },
+    {
+      "id": "b1-5",
+      "title": "Give Directions",
+      "desc": "Help a tourist find the main train station.",
+      "target_role": "Lost Tourist",
+      "guide": [
+        "Give step-by-step directions",
+        "Mention landmarks",
+        "Estimate walking time",
+        "Offer alternatives",
+        "Where exactly do you want to go?",
+        "Do you know your way around?",
+        "Do you have Google Maps?",
+        "Do you need more help?",
+        "Did you understand me?",
+        "Should I explain that again?",
+        "Wait, I'll show you on the map."
+      ]
+    },
+    {
+      "id": "b1-6",
+      "title": "Discuss a Movie",
+      "desc": "Talk about a film you recently watched.",
+      "target_role": "Friend",
+      "guide": [
+        "Describe the story briefly",
+        "Give your opinion",
+        "Ask if they've seen it",
+        "Recommend or warn",
+        "What kind of movies do you like?",
+        "What's your favorite movie?",
+        "Do you prefer cinema or streaming?",
+        "Do you have a series you can recommend?",
+        "What's the German word for 'plot'?",
+        "I can't remember the name.",
+        "What do you mean?"
+      ]
+    },
+    {
+      "id": "b1-7",
+      "title": "Report a Problem",
+      "desc": "Your heating is broken. Call the landlord.",
+      "target_role": "Property Manager",
+      "guide": [
+        "Explain the problem",
+        "Say since when",
+        "Describe what you tried",
+        "Ask for a repair",
+        "When could someone come?",
+        "Who pays for the repair?",
+        "Is there an emergency number?",
+        "Can I reduce the rent?",
+        "I can be reached during the day at...",
+        "Can you send me confirmation?",
+        "What's that part called in German?"
+      ]
+    },
+    {
+      "id": "b1-8",
+      "title": "Health Advice",
+      "desc": "Discuss healthy lifestyle habits.",
+      "target_role": "Fitness Coach",
+      "guide": [
+        "Describe your current habits",
+        "Ask for advice",
+        "Discuss nutrition",
+        "Set a goal",
+        "What's healthier: jogging or swimming?",
+        "How much water per day?",
+        "Is it bad to take weekends off?",
+        "What exercises can I do at home?",
+        "Can you show me that again?",
+        "What's this exercise called?",
+        "I didn't quite understand that."
+      ]
+    },
+    {
+      "id": "b1-9",
+      "title": "Exam: Express Opinion",
+      "desc": "Share your view on a topic and give reasons (Goethe B1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "State your opinion clearly",
+        "Give reasons",
+        "Give an example from experience",
+        "Consider the other side",
+        "Summarize your position",
+        "May I think for a moment?",
+        "Can you rephrase the question?",
+        "I'm not entirely sure, but..."
+      ]
+    },
+    {
+      "id": "b1-10",
+      "title": "Exam: Problem Solving",
+      "desc": "Work together to solve a practical problem (telc B1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Suggest solutions",
+        "React to their ideas",
+        "Weigh pros and cons",
+        "Agree on a solution",
+        "I have another idea.",
+        "Do I understand correctly that...?",
+        "Can we come back to that?"
+      ]
+    },
+    {
+      "id": "b1-exam-3",
+      "title": "Exam: Plan an Event",
+      "desc": "Plan a party or event together with your partner (Goethe B1 Sprechen Teil 1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Suggest a theme for the celebration",
+        "Discuss location and time",
+        "Distribute tasks",
+        "React to your partner's suggestions",
+        "Summarize the plan",
+        "What do you think about us ...?",
+        "I'll take care of ...",
+        "Can we discuss that again?"
+      ]
+    },
+    {
+      "id": "b1-exam-4",
+      "title": "Exam: Describe a Photo",
+      "desc": "Describe a photo in detail and talk about the theme (telc B1 oral exam Teil 2).",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe what you see in the photo",
+        "Guess what the situation is",
+        "Share your own experience on the topic",
+        "Give your opinion on the photo's topic",
+        "In the photo you can see ...",
+        "I suspect that ...",
+        "That reminds me of ...",
+        "May I think for a moment?"
+      ]
+    },
+    {
+      "id": "b1-exam-5",
+      "title": "Exam: Advantages and Disadvantages",
+      "desc": "Discuss pros and cons of a topic and take a position (Goethe B1 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Briefly introduce the topic",
+        "Name advantages",
+        "Name disadvantages",
+        "State your own opinion",
+        "Respond to your partner's opinion",
+        "On the one hand ..., on the other hand ...",
+        "I am of the opinion that ...",
+        "Can you explain that in more detail?"
+      ]
+    },
+    {
+      "id": "b1-exam-6",
+      "title": "Exam: Negotiate a Compromise",
+      "desc": "Find a solution when you and your partner disagree (telc B1 Sprechen Teil 3).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Say what you want",
+        "Listen to your partner's wish",
+        "Explain why your suggestion is better",
+        "Suggest a compromise",
+        "Reach an agreement",
+        "I understand your point, but ...",
+        "Could we meet in the middle?",
+        "Would you agree with that?"
+      ]
+    },
+    {
+      "id": "b1-exam-7",
+      "title": "Exam: Give a Short Talk",
+      "desc": "Give a short monologue on a given topic (Goethe B1 Sprechen Teil 2).",
+      "target_role": "Examiner",
+      "guide": [
+        "Introduce the topic",
+        "Describe the situation in your home country",
+        "Give an example from your experience",
+        "State your opinion and give reasons",
+        "Conclude",
+        "I'd like to talk about the topic of ...",
+        "In my home country, it's the case that ...",
+        "In summary, I'd like to say that ..."
+      ]
+    },
+    {
+      "id": "b1-exam-8",
+      "title": "Exam: React and Follow Up",
+      "desc": "Ask follow-up questions after your partner's presentation (Goethe B1 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Say what you found interesting",
+        "Ask a question about the topic",
+        "Compare with your own experience",
+        "Say whether you agree or not",
+        "I find that very interesting.",
+        "I have a question about that.",
+        "For me it's similar/different.",
+        "I completely agree."
+      ]
+    },
+    {
+      "id": "b1-exam-9",
+      "title": "Exam: Role-Play Complaint",
+      "desc": "Make a formal complaint and negotiate a solution (telc B1 Sprechen Teil 1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Explain the problem politely",
+        "Say what you want",
+        "React to your partner's suggestion",
+        "Find a solution together",
+        "I have a problem with ...",
+        "Would it be possible that ...?",
+        "That is unfortunately not acceptable.",
+        "Agreed, let's do it that way."
+      ]
+    },
+    {
+      "id": "b1-exam-10",
+      "title": "Exam: Discuss Everyday Topics",
+      "desc": "Discuss topics like work, travel, or health (Goethe B1 Sprechen Teil 3).",
+      "target_role": "Examiner",
+      "guide": [
+        "Talk about your experiences on the topic",
+        "Compare different options",
+        "Give reasons for your opinion",
+        "Respond to follow-up questions",
+        "In my experience ...",
+        "I think it's important that ...",
+        "Can you rephrase the question?",
+        "I'm not entirely sure, but ..."
+      ]
+    },
+    {
+      "id": "b1-exam-11",
+      "title": "Exam: Introduce Yourself",
+      "desc": "Present yourself professionally in an exam setting (telc B1 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Introduce yourself: name, origin, residence",
+        "Talk about your education or job",
+        "Talk about your family",
+        "Say why you are learning German",
+        "Talk about your hobbies and interests",
+        "Since when have you been learning German?",
+        "What do you like about Germany?",
+        "What are your plans for the future?",
+        "What do you miss about your home country?",
+        "May I think for a moment?",
+        "Can you repeat the question?",
+        "I'm not entirely sure, but..."
+      ]
+    }
+  ],
+  "b2": [
+    {
+      "id": "b2-1",
+      "title": "Negotiate Salary",
+      "desc": "Discuss your salary expectations in a job offer.",
+      "target_role": "HR Director",
+      "guide": [
+        "State your salary expectation",
+        "Justify with experience",
+        "Ask about benefits",
+        "Find a compromise",
+        "Is there an annual salary adjustment?",
+        "What about work-from-home days?",
+        "Are there bonuses?",
+        "How many vacation days?",
+        "I'd like to come back to a point.",
+        "Let me think about that.",
+        "Could you be more specific?"
+      ]
+    },
+    {
+      "id": "b2-2",
+      "title": "Debate: Technology",
+      "desc": "Discuss pros and cons of social media.",
+      "target_role": "Discussion Partner",
+      "guide": [
+        "State your position",
+        "Discuss advantages",
+        "Discuss disadvantages",
+        "Respond to counterarguments",
+        "How much time on your phone?",
+        "Should children use social media?",
+        "Which platform most problematic?",
+        "Could social media be regulated better?",
+        "I have to disagree.",
+        "Let me finish that thought.",
+        "What exactly do you mean?"
+      ]
+    },
+    {
+      "id": "b2-3",
+      "title": "Explain a Concept",
+      "desc": "Explain your field of work to a non-expert.",
+      "target_role": "Curious Friend",
+      "guide": [
+        "Give a simple overview",
+        "Use an analogy",
+        "Explain why it matters",
+        "Give a concrete example",
+        "Is that understandable?",
+        "Should I explain more?",
+        "Have you heard of that?",
+        "Interested in a specific aspect?",
+        "How do you express that in German?",
+        "I'm missing the technical term.",
+        "Do you understand what I mean?"
+      ]
+    },
+    {
+      "id": "b2-4",
+      "title": "Handle a Complaint",
+      "desc": "A customer is unhappy. Resolve the situation.",
+      "target_role": "Angry Customer",
+      "guide": [
+        "Show empathy",
+        "Apologize professionally",
+        "Ask for details",
+        "Offer a solution",
+        "When did the problem occur?",
+        "Do you have the order number?",
+        "Would an exchange be acceptable?",
+        "What would be satisfactory?",
+        "I understand your concern.",
+        "May I speak with my supervisor?",
+        "Let me summarize that."
+      ]
+    },
+    {
+      "id": "b2-5",
+      "title": "University Application",
+      "desc": "Explain why you want to study in Germany.",
+      "target_role": "Admissions Officer",
+      "guide": [
+        "Explain your motivation",
+        "Describe your academic background",
+        "Explain why this program",
+        "Mention your German skills",
+        "What documents do you need?",
+        "Are there scholarships?",
+        "When does the semester start?",
+        "Can I apply without TestDaF?",
+        "Could you explain that again?",
+        "I can't think of the German word.",
+        "Did I understand your question?"
+      ]
+    },
+    {
+      "id": "b2-6",
+      "title": "Environmental Discussion",
+      "desc": "Discuss climate change and personal responsibility.",
+      "target_role": "Environmental Activist",
+      "guide": [
+        "Describe the problem",
+        "Share what you do personally",
+        "Discuss systemic changes",
+        "Discuss realistic solutions",
+        "What about electric cars?",
+        "Is organic really better?",
+        "What can each individual do?",
+        "Can we still reach the goal?",
+        "I see that differently.",
+        "I agree with you.",
+        "Can you support that with an example?"
+      ]
+    },
+    {
+      "id": "b2-7",
+      "title": "Conflict Resolution",
+      "desc": "Mediate between two colleagues who disagree.",
+      "target_role": "Upset Colleague",
+      "guide": [
+        "Listen and show understanding",
+        "Ask about the other perspective",
+        "Suggest a compromise",
+        "Propose concrete next steps",
+        "What exactly bothered you?",
+        "How would you have wanted it?",
+        "Would you be willing to talk?",
+        "What do you need to keep working?",
+        "Let me summarize.",
+        "Did I understand you correctly?",
+        "May I say something?"
+      ]
+    },
+    {
+      "id": "b2-8",
+      "title": "News Discussion",
+      "desc": "Discuss a current news event and its implications.",
+      "target_role": "Informed Citizen",
+      "guide": [
+        "Bring up the topic",
+        "Summarize the event",
+        "Share your analysis",
+        "Discuss consequences",
+        "How do you assess the situation?",
+        "Where do you get your news?",
+        "Do you think it'll improve?",
+        "What would you do as the government?",
+        "I'm not quite up to date.",
+        "Can you elaborate?",
+        "That's an interesting point."
+      ]
+    },
+    {
+      "id": "b2-9",
+      "title": "Exam: Presentation",
+      "desc": "Give a short presentation on a given topic (Goethe B2).",
+      "target_role": "Examiner",
+      "guide": [
+        "Introduce the topic",
+        "Describe the situation in your country",
+        "State advantages and disadvantages",
+        "Give your personal opinion",
+        "Conclude clearly",
+        "I'll get to that point shortly.",
+        "Let me rephrase that.",
+        "May I contextualize the topic?"
+      ]
+    },
+    {
+      "id": "b2-10",
+      "title": "Exam: Discussion",
+      "desc": "Engage in a structured discussion with pros and cons (telc B2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Take a clear position",
+        "Support with arguments",
+        "Respond to counterpoints",
+        "Make concessions",
+        "Summarize",
+        "May I address that?",
+        "I'd like to add a point.",
+        "Let me briefly summarize."
+      ]
+    },
+    {
+      "id": "b2-exam-3",
+      "title": "Exam: Respond to Presentation",
+      "desc": "Give feedback and ask questions after a presentation (Goethe B2 Sprechen Teil 1).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Briefly summarize the presentation",
+        "Say what you found particularly interesting",
+        "Ask a follow-up question",
+        "Compare with the situation in your country",
+        "Say whether you agree or disagree",
+        "Thank you for your presentation.",
+        "I'd like to note that ...",
+        "Could you elaborate on the last point?"
+      ]
+    },
+    {
+      "id": "b2-exam-4",
+      "title": "Exam: Proposal and Persuasion",
+      "desc": "Propose a solution and convince your partner (telc B2 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Present your proposal",
+        "Give convincing arguments",
+        "Address objections",
+        "Find a compromise",
+        "Summarize the result",
+        "I'd like to make the following proposal.",
+        "I understand your concerns, however ...",
+        "Would you be willing to compromise?"
+      ]
+    },
+    {
+      "id": "b2-exam-5",
+      "title": "Exam: Interpret Data",
+      "desc": "Describe and interpret a graph or statistic (Goethe B2 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe what the graph shows",
+        "Name the most important trends",
+        "Explain possible reasons",
+        "Draw conclusions",
+        "Give your personal assessment",
+        "The graph illustrates ...",
+        "What stands out is that ...",
+        "That could be due to the fact that ..."
+      ]
+    },
+    {
+      "id": "b2-exam-6",
+      "title": "Exam: Discuss a Controversial Topic",
+      "desc": "Take a position on a controversial issue and defend it (telc B2 oral exam).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "State your thesis",
+        "Support your position with examples",
+        "Address counterarguments",
+        "Acknowledge weaknesses in your position",
+        "Draw a nuanced conclusion",
+        "I hold the view that ...",
+        "I'd like to counter that by saying ...",
+        "Agreed, you're right on this point."
+      ]
+    },
+    {
+      "id": "b2-exam-7",
+      "title": "Exam: Formal Role-Play",
+      "desc": "Handle a formal situation like a complaint or request at a public office (Goethe B2 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Explain your concern formally",
+        "Respond to follow-up questions",
+        "Offer alternatives",
+        "Express dissatisfaction politely",
+        "Agree on a solution",
+        "I'm contacting you because ...",
+        "That unfortunately doesn't meet my expectations.",
+        "Would there possibly be another option?"
+      ]
+    },
+    {
+      "id": "b2-exam-8",
+      "title": "Exam: Compare Viewpoints",
+      "desc": "Compare two different opinions on a topic and form your own (Goethe B2 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Present both viewpoints",
+        "Highlight similarities and differences",
+        "Evaluate the arguments of both sides",
+        "Explain which opinion you're closer to",
+        "While one side argues that ..., the other emphasizes ...",
+        "Both positions have their validity.",
+        "Let me put that differently."
+      ]
+    },
+    {
+      "id": "b2-exam-9",
+      "title": "Exam: Discuss a Proposal",
+      "desc": "Discuss a proposed change and negotiate details (telc B2 Sprechen Teil 3).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Read the proposal and react",
+        "Express agreement or concerns",
+        "Suggest changes or additions",
+        "Agree on a joint plan",
+        "Overall I think the proposal is good, however ...",
+        "I suggest we modify the point ...",
+        "Are we in agreement?"
+      ]
+    },
+    {
+      "id": "b2-exam-10",
+      "title": "Exam: Monologue with Q&A",
+      "desc": "Give a structured monologue and answer follow-up questions (Goethe B2 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Introduce the topic",
+        "Structure your talk clearly",
+        "Give examples and experiences",
+        "Formulate a conclusion",
+        "Answer follow-up questions confidently",
+        "I'd like to divide my talk into three points.",
+        "In closing, I'd like to note that ...",
+        "Thank you for your question. On that I'd like to say ..."
+      ]
+    }
+  ],
+  "c1": [
+    {
+      "id": "c1-1",
+      "title": "Business Negotiation",
+      "desc": "Negotiate contract terms with a business partner.",
+      "target_role": "Business Executive",
+      "guide": [
+        "State your key requirements",
+        "Respond to their terms",
+        "Propose a compromise",
+        "Close the deal",
+        "What contract duration do you envision?",
+        "Is there room for negotiation?",
+        "Under what conditions would that work?",
+        "Can we postpone this point?",
+        "I'd like to revisit a point.",
+        "Could you be more specific?",
+        "I see a need for clarification."
+      ]
+    },
+    {
+      "id": "c1-2",
+      "title": "Academic Discussion",
+      "desc": "Discuss research methodology in your field.",
+      "target_role": "Professor",
+      "guide": [
+        "Describe your methodological approach",
+        "Justify your methodology",
+        "Discuss limitations",
+        "Respond to critique",
+        "Which method would you recommend?",
+        "Are there newer studies?",
+        "How do you assess the reliability?",
+        "Can this be transferred to other contexts?",
+        "I'm missing the technical term.",
+        "How would you phrase that?",
+        "May I elaborate briefly?"
+      ]
+    },
+    {
+      "id": "c1-3",
+      "title": "Political Debate",
+      "desc": "Defend your position on immigration policy.",
+      "target_role": "Political Opponent",
+      "guide": [
+        "State your position clearly",
+        "Support with data or examples",
+        "Counter opposing arguments",
+        "Propose constructive solutions",
+        "What sources are you basing this on?",
+        "How do you explain the contradiction?",
+        "What would be the consequence?",
+        "Don't you see opportunities too?",
+        "Allow me to look at that more nuancedly.",
+        "I have to strongly disagree.",
+        "Let me finish, please."
+      ]
+    },
+    {
+      "id": "c1-4",
+      "title": "Crisis Management",
+      "desc": "Lead a team meeting during a company crisis.",
+      "target_role": "Stressed Team Member",
+      "guide": [
+        "Assess the situation",
+        "Set priorities",
+        "Assign responsibilities",
+        "Address team concerns",
+        "What do you need to implement that?",
+        "By when is that realistic?",
+        "Are there dependencies?",
+        "Who else needs to be informed?",
+        "Let me summarize.",
+        "Any more questions?",
+        "We'll come back to that."
+      ]
+    },
+    {
+      "id": "c1-5",
+      "title": "Ethical Dilemma",
+      "desc": "Discuss an ethical problem in business or medicine.",
+      "target_role": "Ethics Committee Member",
+      "guide": [
+        "Define the ethical conflict",
+        "Present both sides",
+        "Reference ethical principles",
+        "Share your position",
+        "Where do you draw the line?",
+        "Are there comparable cases?",
+        "How would you decide?",
+        "What long-term consequences?",
+        "That's a multifaceted question.",
+        "Let me differentiate.",
+        "I'd like to highlight one aspect."
+      ]
+    },
+    {
+      "id": "c1-6",
+      "title": "Cultural Critique",
+      "desc": "Analyze a piece of German literature or film.",
+      "target_role": "Literature Professor",
+      "guide": [
+        "Analyze the main themes",
+        "Discuss style or technique",
+        "Place it in historical context",
+        "Give your critical assessment",
+        "Which interpretation more convincing?",
+        "How do you place it in its era?",
+        "What influence did the work have?",
+        "Are there autobiographical references?",
+        "What's the technical term?",
+        "I'd like to be more precise.",
+        "May I draw a comparison?"
+      ]
+    },
+    {
+      "id": "c1-7",
+      "title": "Legal Consultation",
+      "desc": "Explain a complex legal situation to a client.",
+      "target_role": "Confused Client",
+      "guide": [
+        "Summarize the legal situation",
+        "Explain the relevant law simply",
+        "Outline the options",
+        "Discuss risks",
+        "What are my chances?",
+        "What would that cost?",
+        "How long does such a process take?",
+        "What if I do nothing?",
+        "Can you explain more simply?",
+        "What does this legal term mean?",
+        "I want to make sure I understand."
+      ]
+    },
+    {
+      "id": "c1-8",
+      "title": "Scientific Explanation",
+      "desc": "Explain a complex scientific concept in simple terms.",
+      "target_role": "Journalist",
+      "guide": [
+        "Start with a simple analogy",
+        "Explain the core concept",
+        "Address common misconceptions",
+        "Explain everyday relevance",
+        "Can you summarize in one sentence?",
+        "What practical applications?",
+        "How certain are these findings?",
+        "What does it mean for non-experts?",
+        "I'm missing the right expression.",
+        "Should I explain differently?",
+        "That's hard to express in German."
+      ]
+    },
+    {
+      "id": "c1-9",
+      "title": "Exam: Synthesis Task",
+      "desc": "Summarize and respond to multiple viewpoints (TestDaF style).",
+      "target_role": "Examiner",
+      "guide": [
+        "Introduce topic and sources",
+        "Summarize the viewpoints",
+        "Compare and contrast",
+        "Present your own position",
+        "Conclude with nuance",
+        "May I think?",
+        "I'd like a more nuanced view.",
+        "Let me finish that thought."
+      ]
+    },
+    {
+      "id": "c1-10",
+      "title": "Exam: Spontaneous Speech",
+      "desc": "Speak fluently on an unexpected topic (Goethe C1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Buy thinking time",
+        "Structure thoughts aloud",
+        "Give personal examples",
+        "Use sophisticated connectors",
+        "Wrap up coherently",
+        "I might be digressing, but...",
+        "How to express that elegantly in German?",
+        "Sorry, let me correct myself."
+      ]
+    },
+    {
+      "id": "c1-exam-3",
+      "title": "Exam: Formal Presentation",
+      "desc": "Give a structured presentation on a complex topic (Goethe C1 Sprechen Teil 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Introduce the topic and give an overview",
+        "Clearly divide your talk into sections",
+        "Describe the situation in your home country",
+        "Weigh different aspects",
+        "Formulate a nuanced conclusion",
+        "I'd like to start with an overview.",
+        "In the following, I'll address three aspects.",
+        "With that, I come to the end of my talk."
+      ]
+    },
+    {
+      "id": "c1-exam-4",
+      "title": "Exam: Discussion Round",
+      "desc": "Participate in a structured discussion with multiple viewpoints (Goethe C1 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Take a clear position",
+        "Argue with nuance",
+        "Address your partner's arguments",
+        "Make concessions where appropriate",
+        "Bring the discussion to a result",
+        "I'd like to build on what you just said.",
+        "I hold a different view on that.",
+        "Let's try to find common ground."
+      ]
+    },
+    {
+      "id": "c1-exam-5",
+      "title": "Exam: Text-Based Argumentation",
+      "desc": "Read a statement and argue for or against it (TestDaF oral expression Aufgabe 3).",
+      "target_role": "Examiner",
+      "guide": [
+        "Restate the thesis in your own words",
+        "Develop a clear argumentation",
+        "Support your arguments with examples",
+        "Consider possible counterarguments",
+        "Formulate a coherent conclusion",
+        "The thesis states that ...",
+        "I'd like to address this viewpoint with the following arguments.",
+        "On balance, it can be stated that ..."
+      ]
+    },
+    {
+      "id": "c1-exam-6",
+      "title": "Exam: Describe a Situation",
+      "desc": "Describe a situation from a graphic and propose solutions (TestDaF oral expression Aufgabe 1).",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the depicted situation",
+        "Place the situation in a larger context",
+        "Analyze causes and effects",
+        "Propose approaches to solutions",
+        "The graphic shows that ...",
+        "This can be attributed to the fact that ...",
+        "One possible solution would be ..."
+      ]
+    },
+    {
+      "id": "c1-exam-7",
+      "title": "Exam: Weigh Alternatives",
+      "desc": "Compare options and give a well-reasoned recommendation (TestDaF oral expression Aufgabe 4).",
+      "target_role": "Examiner",
+      "guide": [
+        "Present the alternatives",
+        "Analyze the pros and cons of each option",
+        "Consider different perspectives",
+        "Give a well-reasoned recommendation",
+        "There are essentially two options up for debate.",
+        "Weighing all aspects, I would recommend ...",
+        "In my view, what's decisive is ..."
+      ]
+    },
+    {
+      "id": "c1-exam-8",
+      "title": "Exam: Respond to a Lecture",
+      "desc": "Summarize and critically respond to an academic lecture (TestDaF oral expression Aufgabe 5).",
+      "target_role": "Examiner",
+      "guide": [
+        "Summarize the key statements",
+        "Identify the main arguments",
+        "Evaluate the persuasiveness of the argumentation",
+        "Formulate your own position",
+        "The speaker holds the view that ...",
+        "This argument only partially convinces me because ...",
+        "I'd like to contrast that with a different perspective."
+      ]
+    },
+    {
+      "id": "c1-exam-9",
+      "title": "Exam: Formal Negotiation",
+      "desc": "Negotiate a formal agreement with specific conditions (Goethe C1 Sprechen Teil 2).",
+      "target_role": "Exam Partner",
+      "guide": [
+        "Present your starting position",
+        "State your conditions",
+        "Respond flexibly to counterproposals",
+        "Negotiate a compromise",
+        "Record the result",
+        "On the condition that ..., I'd be willing to ...",
+        "Could we agree on the following compromise?",
+        "I'll summarize the key points of our agreement."
+      ]
+    },
+    {
+      "id": "c1-exam-10",
+      "title": "Exam: Hypothetical Scenario",
+      "desc": "Discuss a hypothetical situation and develop solutions (TestDaF oral expression Aufgabe 6).",
+      "target_role": "Examiner",
+      "guide": [
+        "Analyze the hypothetical situation",
+        "Discuss possible consequences",
+        "Develop different courses of action",
+        "Justify your preferred solution",
+        "Reflect on possible objections",
+        "Assuming this situation occurred, then ...",
+        "In this case, one would have to weigh whether ...",
+        "One could object that ..."
+      ]
+    }
+  ],
+  "dsh": [
+    {
+      "id": "dsh-1",
+      "title": "How Germany Relaxes",
+      "desc": "Describe a chart about relaxation and discuss it.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the graph",
+        "State the key findings",
+        "Compare with your home country",
+        "Give your opinion on the topic",
+        "How do people relax in your country?",
+        "What role does leisure play in modern society?",
+        "Are there cultural differences regarding relaxation?",
+        "The graph shows that...",
+        "Compared to my home country...",
+        "In my view, it can be stated that..."
+      ]
+    },
+    {
+      "id": "dsh-2",
+      "title": "Dolphins",
+      "desc": "Discuss dolphins, animal protection, and research.",
+      "target_role": "Examiner",
+      "guide": [
+        "Summarize the listening text",
+        "Discuss the role of dolphins in research",
+        "Discuss ethical aspects of animal research",
+        "Take a position on animal protection",
+        "What is your stance on animal testing in science?",
+        "Should dolphins be kept in captivity?",
+        "What alternatives are there to animal research?",
+        "On one hand... on the other hand...",
+        "From an ethical perspective, one must consider...",
+        "The research results clearly show that..."
+      ]
+    },
+    {
+      "id": "dsh-3",
+      "title": "TV Over Sports",
+      "desc": "Discuss media consumption versus physical activity.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the graph about media consumption",
+        "Compare TV and sports as leisure activities",
+        "Discuss the health implications",
+        "Propose solutions",
+        "How much time do you spend in front of screens?",
+        "Why are people moving less and less?",
+        "What measures could help?",
+        "The statistics illustrate that...",
+        "A key reason for this is...",
+        "In summary, it can be said that..."
+      ]
+    },
+    {
+      "id": "dsh-4",
+      "title": "Loneliness Across Age Groups",
+      "desc": "Analyze causes of loneliness and discuss possible solutions.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the age differences in loneliness",
+        "Name causes for each age group",
+        "Discuss societal changes",
+        "Propose countermeasures",
+        "Is loneliness a growing problem?",
+        "What role do social media play?",
+        "How is loneliness dealt with in your country?",
+        "It is notable that...",
+        "This can be attributed to...",
+        "A possible solution would be..."
+      ]
+    },
+    {
+      "id": "dsh-5",
+      "title": "Stone Age Humans and Their Cooking",
+      "desc": "Talk about the history of nutrition and modern eating habits.",
+      "target_role": "Examiner",
+      "guide": [
+        "Summarize findings about Stone Age cooking",
+        "Compare with modern nutrition trends",
+        "Discuss the trend toward natural nutrition",
+        "Assess the relevance of historical research",
+        "What can we learn from Stone Age nutrition?",
+        "Are modern diets like Paleo sensible?",
+        "How has our nutrition changed?",
+        "Research has shown that...",
+        "In contrast to earlier times...",
+        "From this, one can conclude that..."
+      ]
+    },
+    {
+      "id": "dsh-6",
+      "title": "Wind and Solar Energy in Germany",
+      "desc": "Describe a chart about the energy transition and discuss it.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the development of renewable energies",
+        "Interpret the data in the graph",
+        "Compare with other countries",
+        "Assess Germany's energy policy",
+        "Is the energy transition realistic?",
+        "What problems are there with renewables?",
+        "What does energy supply look like in your country?",
+        "From the graph, it can be seen that...",
+        "Particularly notable is the increase in...",
+        "However, it should be critically noted that..."
+      ]
+    },
+    {
+      "id": "dsh-7",
+      "title": "Technologies of the Near Future",
+      "desc": "Discuss technological developments and their impact.",
+      "target_role": "Examiner",
+      "guide": [
+        "Present current technological trends",
+        "Discuss opportunities and risks",
+        "Discuss ethical questions",
+        "Make a prediction",
+        "Which technology will change our lives the most?",
+        "Should AI be regulated?",
+        "How are universities preparing for digital change?",
+        "Experts assume that...",
+        "It can be assumed that...",
+        "The impact on society is considerable."
+      ]
+    },
+    {
+      "id": "dsh-8",
+      "title": "New Ways of Working",
+      "desc": "Talk about changing work environments, remote work, and work-life balance.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the changes in the working world",
+        "Name pros and cons of home office",
+        "Discuss work-life balance",
+        "Compare with the situation in your country",
+        "Will the office become obsolete?",
+        "How does digitalization change the working world?",
+        "What do young people expect from a workplace?",
+        "The data show that...",
+        "An essential aspect is...",
+        "From the employee's perspective..."
+      ]
+    },
+    {
+      "id": "dsh-9",
+      "title": "Studying Abroad in Europe",
+      "desc": "Discuss studying abroad, mobility, and Erasmus.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the graph about student mobility",
+        "Discuss advantages of studying abroad",
+        "Name possible difficulties",
+        "Report on your own experiences",
+        "Why do students choose a semester abroad?",
+        "What role does Erasmus play?",
+        "How does one finance studying abroad?",
+        "From personal experience, I can report that...",
+        "The graph shows a clear trend toward...",
+        "Besides advantages, there are also challenges such as..."
+      ]
+    },
+    {
+      "id": "dsh-10",
+      "title": "Studying in Germany in International Comparison",
+      "desc": "Compare the German higher education system with other countries.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the international comparison data",
+        "Compare with the system in your country",
+        "Discuss strengths and weaknesses",
+        "Assess Germany's attractiveness as a study destination",
+        "What makes the German university system special?",
+        "Should tuition fees be introduced?",
+        "How could the dropout rate be reduced?",
+        "In international comparison, it shows that...",
+        "A crucial difference is that...",
+        "In conclusion, I would like to emphasize that..."
+      ]
+    },
+    {
+      "id": "dsh-11",
+      "title": "Why Do Women Exercise?",
+      "desc": "Analyze a chart about sports behavior and discuss gender differences.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the graph about sports behavior",
+        "Discuss differences between genders",
+        "Name possible explanations",
+        "Discuss the social importance of sports",
+        "Why do men and women exercise differently?",
+        "What role does sports play for health?",
+        "How could more people be motivated to exercise?",
+        "The graph makes clear that...",
+        "A possible explanation would be...",
+        "Against this background, it seems sensible..."
+      ]
+    },
+    {
+      "id": "dsh-12",
+      "title": "The Perfect Vacation",
+      "desc": "Talk about travel trends, tourism, and sustainability.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the graph about travel behavior",
+        "Compare different types of vacation",
+        "Discuss sustainable tourism",
+        "Report on travel habits in your country",
+        "How has tourism changed in recent years?",
+        "Is mass tourism a problem?",
+        "How can one travel more eco-friendly?",
+        "According to the graph, most prefer...",
+        "Here, one must consider that...",
+        "In my opinion, one should..."
+      ]
+    },
+    {
+      "id": "dsh-13",
+      "title": "Digital Technology in Agriculture",
+      "desc": "Discuss digitalization and modern agriculture.",
+      "target_role": "Examiner",
+      "guide": [
+        "Describe the use of digital technology in agriculture",
+        "Discuss advantages and disadvantages",
+        "Discuss the future of agriculture",
+        "Compare with the situation in your country",
+        "Can technology secure world food supply?",
+        "What risks does automation carry?",
+        "What about organic farming?",
+        "In this context, it should be highlighted that...",
+        "Technological development makes it possible to...",
+        "However, this is countered by the fact that..."
+      ]
+    }
+  ]
+}
